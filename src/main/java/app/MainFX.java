@@ -29,6 +29,23 @@ public class MainFX extends Application {
 
     @Override
     public void start(Stage stage) {
+        try {
+            var loader = new javafx.fxml.FXMLLoader(getClass().getResource("/app/Login.fxml"));
+
+            // Carrega a cena
+            Scene scene = new Scene(loader.load());
+
+            stage.setTitle("Login - GEST");
+            stage.setScene(scene);
+            stage.setResizable(false);
+            stage.show();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    public void IniciarSistemaPrincipal() {
+        Stage stage = new Stage();
 
         // -----------------------------------------------------------------------
         // TODO: INTEGRACAO BANCO DE DADOS (Carregamento Inicial)
@@ -64,7 +81,7 @@ public class MainFX extends Application {
 
         tabelaProdutos = new TableView<>();
         tabelaProdutos.setItems(listaObservavel);
-        tabelaProdutos.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabelaProdutos.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
 
         TableColumn<Produto, Integer> colId = new TableColumn<>("Cód");
         colId.setCellValueFactory(new PropertyValueFactory<>("codigo"));
