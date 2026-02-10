@@ -1,3 +1,5 @@
+package core;
+
 public class Fornecedor implements IRelatorio {
         private String nome;
         private String cnpjCpf;

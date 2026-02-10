@@ -16,7 +16,7 @@
 
 ## Introdução
 
-O GEST (Gestão de Estoque) é um sistema desenvolvido com o objetivo de auxiliar no controle e gerenciamento de produtos em estoque de uma pequena empresa. O sistema permite o cadastro, consulta, atualização e remoção de produtos, bem como o registro de entradas e saídas, fornecendo relatórios que auxiliam na tomada de decisões relacionadas ao estoque, como produtos em falta, valor total armazenado e lucro estimado.
+O GEST (Gestão de core.Estoque) é um sistema desenvolvido com o objetivo de auxiliar no controle e gerenciamento de produtos em estoque de uma pequena empresa. O sistema permite o cadastro, consulta, atualização e remoção de produtos, bem como o registro de entradas e saídas, fornecendo relatórios que auxiliam na tomada de decisões relacionadas ao estoque, como produtos em falta, valor total armazenado e lucro estimado.
 
 Inicialmente, o GEST foi concebido como um projeto acadêmico na disciplina de Programação Orientada a Objetos (POO), onde seu foco principal foi a modelagem do domínio do problema e a aplicação dos conceitos fundamentais de orientação a objetos, como encapsulamento, herança, polimorfismo e abstração.
 
@@ -195,7 +195,7 @@ O sistema será organizado em pacotes (módulos) conforme sua responsabilidade, 
 
 - **view:** telas JavaFX do sistema.
 - **controller:** classes responsáveis por tratar eventos da interface.
-- **model:** classes que representam as entidades do sistema (Produto, Fornecedor, Usuário, etc).
+- **model:** classes que representam as entidades do sistema (core.Produto, core.Fornecedor, Usuário, etc).
 - **service:** regras de negócio.
 - **dao:** classes responsáveis pelo acesso ao banco de dados.
 - **util/config:** classes auxiliares, como conexão com o banco.

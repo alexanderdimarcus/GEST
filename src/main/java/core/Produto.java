@@ -1,3 +1,5 @@
+package core;
+
 public abstract class Produto implements IRelatorio {
     protected String descricao;
     protected String categoria;
@@ -38,7 +40,7 @@ public abstract class Produto implements IRelatorio {
         if (this.qntdDisp >= quantidade) {
             this.qntdDisp -= quantidade;
         } else {
-            throw new Exception("Erro: Estoque insuficiente para realizar a baixa.");
+            throw new Exception("Erro: core.Estoque insuficiente para realizar a baixa.");
         }
     }
 
@@ -64,7 +66,7 @@ public abstract class Produto implements IRelatorio {
     @Override
     public void gerarCabecalho() {
         System.out.println("-------------------------------------------------");
-        System.out.printf("Relatório do Produto: %s (Cód: %d)\n", this.descricao, this.codigo);
+        System.out.printf("Relatório do core.Produto: %s (Cód: %d)\n", this.descricao, this.codigo);
         System.out.println("-------------------------------------------------");
     }
 
@@ -75,7 +77,7 @@ public abstract class Produto implements IRelatorio {
         System.out.println("Quantidade Disponível: " + this.qntdDisp);
         System.out.printf("Valor de Venda Unitário: R$ %.2f\n", this.valorUnitVenda);
         System.out.printf("Lucro (%.1f%%): R$ %.2f por unidade\n", this.percentualLucro, getLucroUnitarioCalculado());
-        System.out.println("Fornecedor: " + this.fornecedor.getNome());
+        System.out.println("core.Fornecedor: " + this.fornecedor.getNome());
     }
 
     @Override

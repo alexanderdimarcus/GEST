@@ -1,3 +1,7 @@
+package cli;
+
+import core.*;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -51,10 +55,10 @@ public class Main {
 
     private static void exibirMenu() {
         System.out.println("\n--- MENU PRINCIPAL ---");
-        System.out.println("1. Cadastrar Novo Produto");
-        System.out.println("2. Registrar Entrada de Estoque");
-        System.out.println("3. Registrar Saída de Estoque (Venda)");
-        System.out.println("4. Excluir Produto");
+        System.out.println("1. Cadastrar Novo core.Produto");
+        System.out.println("2. Registrar Entrada de core.Estoque");
+        System.out.println("3. Registrar Saída de core.Estoque (Venda)");
+        System.out.println("4. Excluir core.Produto");
         System.out.println("5. Gerar Relatórios");
         System.out.println("0. Sair");
         System.out.print("Escolha uma opção: ");
@@ -88,8 +92,8 @@ public class Main {
                     break;
                 case 4:
                     System.out.println("\n--- RELATÓRIO DE VALORES TOTAIS ---");
-                    System.out.printf(">> Valor Total de Venda do Estoque: R$ %.2f\n", meuEstoque.calcularValorTotalEstoque());
-                    System.out.printf(">> Lucro Total Potencial do Estoque: R$ %.2f\n", meuEstoque.calcularLucroTotalEstoque());
+                    System.out.printf(">> Valor Total de Venda do core.Estoque: R$ %.2f\n", meuEstoque.calcularValorTotalEstoque());
+                    System.out.printf(">> Lucro Total Potencial do core.Estoque: R$ %.2f\n", meuEstoque.calcularLucroTotalEstoque());
                     System.out.println("------------------------------------");
                     break;
                 case 5:
@@ -107,7 +111,7 @@ public class Main {
         }
     }
 
-    private static void carregarDadosIniciais() {
+    public static void carregarDadosIniciais() {
         System.out.println("Carregando produtos pré-cadastrados (nosso 'Banco de Dados')...");
         try {
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
@@ -136,7 +140,7 @@ public class Main {
         Produto produto = meuEstoque.buscarProdutoPorCodigo(codigo);
 
         if (produto != null) {
-            System.out.println("Produto encontrado: " + produto.getDescricao());
+            System.out.println("core.Produto encontrado: " + produto.getDescricao());
             int quantidade = 0;
             while (quantidade <= 0) {
                 quantidade = lerInteiroComTratamento("Digite a quantidade de entrada (deve ser maior que zero): ");
@@ -146,7 +150,7 @@ public class Main {
             }
             meuEstoque.registrarEntrada(codigo, quantidade);
         } else {
-            System.out.println("Erro: Produto com código " + codigo + " não encontrado.");
+            System.out.println("Erro: core.Produto com código " + codigo + " não encontrado.");
         }
     }
 
@@ -157,7 +161,7 @@ public class Main {
         Produto produto = meuEstoque.buscarProdutoPorCodigo(codigo);
 
         if (produto != null) {
-            System.out.println("Produto encontrado: " + produto.getDescricao());
+            System.out.println("core.Produto encontrado: " + produto.getDescricao());
             System.out.println("Quantidade disponível: " + produto.getQntdDisp());
             int quantidade = 0;
             while (quantidade <= 0) {
@@ -168,7 +172,7 @@ public class Main {
             }
             meuEstoque.registrarSaida(codigo, quantidade);
         } else {
-            System.out.println("Erro: Produto com código " + codigo + " não encontrado.");
+            System.out.println("Erro: core.Produto com código " + codigo + " não encontrado.");
         }
     }
 
@@ -185,7 +189,7 @@ public class Main {
         Produto produto = meuEstoque.buscarProdutoPorCodigo(codigo);
 
         if (produto != null) {
-            System.out.println("Produto encontrado: " + produto.getDescricao());
+            System.out.println("core.Produto encontrado: " + produto.getDescricao());
             System.out.print("!!! ATENÇÃO !!! Esta ação é permanente. Deseja realmente excluir este produto? (S/N): ");
             String confirmacao = scanner.nextLine().trim().toUpperCase();
 
@@ -195,7 +199,7 @@ public class Main {
                 System.out.println("Exclusão cancelada pelo usuário.");
             }
         } else {
-            System.out.println("Erro: Produto com código " + codigo + " não encontrado para exclusão.");
+            System.out.println("Erro: core.Produto com código " + codigo + " não encontrado para exclusão.");
         }
     }
 
@@ -205,10 +209,10 @@ public class Main {
         Produto produto = meuEstoque.buscarProdutoPorCodigo(codigo);
 
         if (produto != null) {
-            System.out.println("Produto encontrado. Exibindo detalhes:");
+            System.out.println("core.Produto encontrado. Exibindo detalhes:");
             produto.imprimirRelatorio();
         } else {
-            System.out.println("Erro: Produto com código " + codigo + " não encontrado no estoque.");
+            System.out.println("Erro: core.Produto com código " + codigo + " não encontrado no estoque.");
         }
     }
 
@@ -263,7 +267,7 @@ public class Main {
     }
 
     private static Fornecedor escolherFornecedor() {
-        System.out.println("\n--- Escolha um Fornecedor ---");
+        System.out.println("\n--- Escolha um core.Fornecedor ---");
         meuEstoque.imprimirListaFornecedores();
 
         while (true) {
@@ -273,7 +277,7 @@ public class Main {
             if (fornecedor != null) {
                 return fornecedor;
             } else {
-                System.out.println("Erro: Fornecedor não encontrado. Tente novamente.");
+                System.out.println("Erro: core.Fornecedor não encontrado. Tente novamente.");
             }
         }
     }

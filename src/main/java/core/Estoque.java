@@ -1,3 +1,5 @@
+package core;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Calendar;
@@ -20,7 +22,7 @@ public class Estoque {
 
         if (buscarFornecedorPorCnpjCpf(fornecedor.getCnpjCpf()) == null) {
             this.fornecedores.add(fornecedor);
-            System.out.println("Fornecedor '" + fornecedor.getNome() + "' cadastrado com sucesso!");
+            System.out.println("core.Fornecedor '" + fornecedor.getNome() + "' cadastrado com sucesso!");
         } else {
             System.out.println("Erro: Já existe um fornecedor cadastrado com o CNPJ/CPF " + fornecedor.getCnpjCpf() + ".");
         }
@@ -31,7 +33,7 @@ public class Estoque {
             return;
         }else if (buscarProdutoPorCodigo(produto.getCodigo()) == null) {
             this.produtos.add(produto);
-            System.out.println("Produto '" + produto.getDescricao() + "' cadastrado com sucesso!");
+            System.out.println("core.Produto '" + produto.getDescricao() + "' cadastrado com sucesso!");
         } else {
             System.out.println("Erro: Já existe um produto com o código " + produto.getCodigo() + ".");
         }
@@ -52,7 +54,7 @@ public class Estoque {
             produto.adicionarEstoque(quantidade);
             System.out.println("Entrada de " + quantidade + " unidades do produto '" + produto.getDescricao() + "' registrada.");
         } else {
-            System.out.println("Erro: Produto com código " + codigo + " não encontrado.");
+            System.out.println("Erro: core.Produto com código " + codigo + " não encontrado.");
         }
     }
 
@@ -66,7 +68,7 @@ public class Estoque {
                 System.out.println("Falha ao registrar saída: " + e.getMessage());
             }
         } else {
-            System.out.println("Erro: Produto com código " + codigo + " não encontrado.");
+            System.out.println("Erro: core.Produto com código " + codigo + " não encontrado.");
         }
     }
 
@@ -74,9 +76,9 @@ public class Estoque {
         Produto produto = buscarProdutoPorCodigo(codigo);
         if (produto != null) {
             this.produtos.remove(produto);
-            System.out.println("Produto '" + produto.getDescricao() + "' excluído com sucesso.");
+            System.out.println("core.Produto '" + produto.getDescricao() + "' excluído com sucesso.");
         } else {
-            System.out.println("Erro: Produto com código " + codigo + " não encontrado para exclusão.");
+            System.out.println("Erro: core.Produto com código " + codigo + " não encontrado para exclusão.");
         }
     }
     public double calcularValorTotalEstoque() {
@@ -131,7 +133,7 @@ public class Estoque {
     }
 
     public void gerarRelatorioEstoqueBaixoEProximoVencimento(int limiteMinimo) {
-        System.out.println("\n--- RELATÓRIO DE PRODUTOS CRÍTICOS (Estoque Baixo ou Vencimento Próximo) ---");
+        System.out.println("\n--- RELATÓRIO DE PRODUTOS CRÍTICOS (core.Estoque Baixo ou Vencimento Próximo) ---");
 
         Date hoje = new Date();
         Calendar cal = Calendar.getInstance();
@@ -149,7 +151,7 @@ public class Estoque {
             String motivo = "";
 
             if (p.getQntdDisp() < limiteMinimo) {
-                motivo += "Estoque Baixo";
+                motivo += "core.Estoque Baixo";
             }
             if (p instanceof ProdutoPerecivel) {
                 ProdutoPerecivel perecivel = (ProdutoPerecivel) p;
@@ -168,7 +170,7 @@ public class Estoque {
             }
 
             if (!motivo.isEmpty()) {
-                System.out.printf("Cód: %-5d | Produto: %-25s | Qtd: %-4d | Motivo: %s\n",
+                System.out.printf("Cód: %-5d | core.Produto: %-25s | Qtd: %-4d | Motivo: %s\n",
                         p.getCodigo(), p.getDescricao(), p.getQntdDisp(), motivo);
                 encontrou = true;
             }
