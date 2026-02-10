@@ -18,10 +18,12 @@ import javafx.stage.Stage;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.List;
 
 public class MainFX extends Application {
 
     private final Estoque meuEstoque = new Estoque();
+    private final dao.ProdutoDAO produtoDAO = new dao.ProdutoDAO();
 
     // A lista visual começa vazia e será preenchida quando o banco for conectado
     private ObservableList<Produto> listaObservavel;
@@ -47,14 +49,11 @@ public class MainFX extends Application {
     public void IniciarSistemaPrincipal() {
         Stage stage = new Stage();
 
-        // -----------------------------------------------------------------------
-        // TODO: INTEGRACAO BANCO DE DADOS (Carregamento Inicial)
-        // O colega deve chamar aqui o método que vai no PostgreSQL buscar os produtos.
-        // Exemplo: meuEstoque.carregarTodosDoBanco();
-        // -----------------------------------------------------------------------
+        // Busca a lista direto do banco de dados
+        List<Produto> produtosDoBanco = produtoDAO.listarTodos();
 
-        // Conecta a lista do JavaFX com a memória da classe Estoque
-        listaObservavel = FXCollections.observableArrayList(meuEstoque.getProdutos());
+        // Conecta a lista do JavaFX com os dados que vieram do banco
+        listaObservavel = FXCollections.observableArrayList(produtosDoBanco);
 
         TabPane tabPane = new TabPane();
 
@@ -158,16 +157,15 @@ public class MainFX extends Application {
         cmbTipo.getItems().addAll("Cosmético", "Eletrônico", "Perecível");
         cmbTipo.setValue("Cosmético");
 
-        // OBS: O colega do banco precisará preencher este ComboBox com dados do DB também
         ComboBox<Fornecedor> cmbFornecedor = new ComboBox<>();
-        try {
-            cmbFornecedor.setItems(FXCollections.observableArrayList(meuEstoque.getListaFornecedores()));
-        } catch (Exception e) { System.err.println("Erro ao carregar lista vazia de fornecedores"); }
+        dao.FornecedorDAO fornecedorDAO = new dao.FornecedorDAO();
+        cmbFornecedor.setItems(FXCollections.observableArrayList(fornecedorDAO.listarTodos()));
 
         VBox painelExtras = new VBox(10);
         painelExtras.setStyle("-fx-border-color: #ddd; -fx-padding: 10; -fx-background-color: #f9f9f9;");
 
         DatePicker dateValidade = new DatePicker();
+        configurarDatePicker(dateValidade);
         TextField txtFabricante = new TextField(); txtFabricante.setPromptText("Fabricante");
         TextField txtGarantia = new TextField(); txtGarantia.setPromptText("Meses de Garantia");
 
@@ -191,43 +189,61 @@ public class MainFX extends Application {
 
         btnSalvar.setOnAction(e -> {
             try {
+                if (txtCodigo.getText().isEmpty() || txtDesc.getText().isEmpty() || txtPreco.getText().isEmpty() || txtQtd.getText().isEmpty()) {
+                    throw new IllegalArgumentException("Por favor, preencha todos os campos obrigatórios.");
+                }
+
                 int cod = Integer.parseInt(txtCodigo.getText());
                 String desc = txtDesc.getText();
                 double preco = Double.parseDouble(txtPreco.getText().replace(",", "."));
                 int qtd = Integer.parseInt(txtQtd.getText());
-                Fornecedor f = cmbFornecedor.getValue(); // Pode ser null se não tiver fornecedor carregado do banco ainda
+                Fornecedor f = cmbFornecedor.getValue();
 
-                // Criação do Objeto Java (Memória)
+                if (f == null) throw new IllegalArgumentException("Selecione um fornecedor!");
+
                 Produto novo = null;
                 String tipo = cmbTipo.getValue();
 
                 if (tipo.equals("Cosmético")) {
+                    if (dateValidade.getValue() == null || dateValidade.getValue().isBefore(LocalDate.now())) {
+                        throw new IllegalArgumentException("A data de validade não pode ser anterior a hoje!");
+                    }
                     Date validade = converterData(dateValidade.getValue());
                     novo = new Cosmetico(cod, desc, "Geral", qtd, preco, 30.0, f, validade, txtFabricante.getText());
-                } else if (tipo.equals("Eletrônico")) {
+                }
+                else if (tipo.equals("Eletrônico")) {
+                    if (txtGarantia.getText().isEmpty()) throw new IllegalArgumentException("Digite a garantia.");
                     int garantia = Integer.parseInt(txtGarantia.getText());
                     novo = new Eletronico(cod, desc, "Tech", qtd, preco, 50.0, f, garantia);
-                } else {
+                }
+                else {
+                    if (dateValidade.getValue() == null || dateValidade.getValue().isBefore(LocalDate.now())) {
+                        throw new IllegalArgumentException("A data de validade não pode ser anterior a hoje!");
+                    }
                     Date validade = converterData(dateValidade.getValue());
                     novo = new ProdutoPerecivel(cod, desc, "Alimento", qtd, preco, 15.0, f, validade);
                 }
 
-                // Adiciona na memória local para ver na tabela imediatamente
-                meuEstoque.cadastrarProduto(novo);
-                listaObservavel.setAll(meuEstoque.getProdutos());
+                produtoDAO.salvar(novo);
 
-                // -----------------------------------------------------------------------
-                // TODO: INTEGRACAO BANCO DE DADOS (Insert)
-                // Pegar o objeto 'novo' e mandar para o método DAO que faz o INSERT INTO no PostgreSQL
-                // -----------------------------------------------------------------------
+                listaObservavel.setAll(produtoDAO.listarTodos());
+                mostrarAlerta("SUCESSO: Produto cadastrado corretamente!");
 
-                mostrarAlerta("Produto preparado para envio ao banco!");
                 txtCodigo.clear(); txtDesc.clear(); txtPreco.clear(); txtQtd.clear();
 
             } catch (NumberFormatException ex) {
-                mostrarAlerta("Erro: Verifique os números.");
+                mostrarErro("Erro de Formato", "Verifique se digitou apenas números nos campos de Preço, Quantidade e Código.");
+            } catch (IllegalArgumentException ex) {
+                mostrarErro("Dados Inválidos", ex.getMessage());
+            } catch (java.sql.SQLException ex) {
+                if (ex.getMessage().contains("duplicate key") || ex.getMessage().contains("produtos_pkey")) {
+                    mostrarErro("Código Duplicado", "O código " + txtCodigo.getText() + " já existe no sistema.\nPor favor, escolha outro.");
+                } else {
+                    mostrarErro("Erro de Banco de Dados", "Falha técnica: " + ex.getMessage());
+                }
             } catch (Exception ex) {
-                mostrarAlerta("Erro: " + ex.getMessage());
+                mostrarErro("Erro Inesperado", ex.getMessage());
+                ex.printStackTrace();
             }
         });
 
@@ -245,6 +261,47 @@ public class MainFX extends Application {
         return layout;
     }
 
+    private void configurarDatePicker(DatePicker datePicker) {
+        String pattern = "dd/MM/yyyy";
+        datePicker.setPromptText("dd/mm/aaaa");
+
+        datePicker.setConverter(new javafx.util.StringConverter<LocalDate>() {
+            java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern(pattern);
+
+            @Override
+            public String toString(LocalDate date) {
+                if (date != null) {
+                    return dateFormatter.format(date);
+                } else {
+                    return "";
+                }
+            }
+
+            @Override
+            public LocalDate fromString(String string) {
+                if (string != null && !string.isEmpty()) {
+                    try {
+                       if (string.matches("\\d{8}")) {
+                            string = string.substring(0, 2) + "/" + string.substring(2, 4) + "/" + string.substring(4);
+                        }
+                        return LocalDate.parse(string, dateFormatter);
+                    } catch (Exception e) {
+                        return null;
+                    }
+                } else {
+                    return null;
+                }
+            }
+        });
+
+        // Garante que o texto digitado seja processado ao sair do campo
+        datePicker.focusedProperty().addListener((observable, oldValue, newValue) -> {
+            if (!newValue) {
+                datePicker.setValue(datePicker.getConverter().fromString(datePicker.getEditor().getText()));
+            }
+        });
+    }
+
     private Date converterData(LocalDate localDate) {
         if (localDate == null) return new Date();
         return Date.from(localDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
@@ -253,6 +310,14 @@ public class MainFX extends Application {
     private void mostrarAlerta(String msg) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Sistema GEST");
+        alert.setHeaderText(null);
+        alert.setContentText(msg);
+        alert.showAndWait();
+    }
+
+    private void mostrarErro(String titulo, String msg) {
+        Alert alert = new Alert(Alert.AlertType.ERROR); // Ícone Vermelho de Erro
+        alert.setTitle(titulo);
         alert.setHeaderText(null);
         alert.setContentText(msg);
         alert.showAndWait();

@@ -62,7 +62,11 @@ public abstract class Produto implements IRelatorio {
     public void setFornecedor(Fornecedor fornecedor) {
         this.fornecedor = fornecedor;
     }
-
+    public double getValorUnitVenda() { return valorUnitVenda; }
+    public void setValorUnitVenda(double valorUnitVenda) { this.valorUnitVenda = valorUnitVenda; }
+    public double getPercentualLucro() { return percentualLucro; }
+    public void setPercentualLucro(double percentualLucro) { this.percentualLucro = percentualLucro; }
+    
     @Override
     public void gerarCabecalho() {
         System.out.println("-------------------------------------------------");
