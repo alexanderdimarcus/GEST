@@ -205,4 +205,12 @@ public class Estoque {
         }
         System.out.println("--- FIM DA LISTA ---\n");
     }
+
+    public Produto getProdutos() {
+        return null;
+    }
+
+    public Fornecedor getListaFornecedores() {
+        return null;
+    }
 }
