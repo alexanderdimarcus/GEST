@@ -1,5 +1,5 @@
  <picture>
-    <img src="https://i.imgur.com/YXDmsq1.png" alt="GEST Logo">
+    <img src="https://i.imgur.com/cQruGU2.png" alt="GEST Logo">
   </picture>
 
 ---

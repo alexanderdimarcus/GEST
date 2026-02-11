@@ -116,8 +116,8 @@ public class Main {
         try {
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
 
-            Fornecedor f1 = new Fornecedor("Beleza & Cia", "11.222.333/0001-44", "(34) 99999-1111");
-            Fornecedor f2 = new Fornecedor("TecnoMundo", "55.666.777/0001-88", "(34) 98888-2222");
+            Fornecedor f1 = new Fornecedor(1, "Beleza & Cia", "11.222.333/0001-44", "(34) 99999-1111");
+            Fornecedor f2 = new Fornecedor(2, "TecnoMundo", "55.666.777/0001-88", "(34) 98888-2222");
             meuEstoque.cadastrarFornecedor(f1);
             meuEstoque.cadastrarFornecedor(f2);
 
