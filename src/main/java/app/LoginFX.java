@@ -1,5 +1,9 @@
 package app;
 
+import dao.UsuarioDAO;
+import core.Usuario;
+import core.Sessao;
+
 import atlantafx.base.theme.PrimerLight;
 import atlantafx.base.theme.Styles;
 import javafx.application.Application;
@@ -85,26 +89,17 @@ public class LoginFX extends Application {
             return;
         }
 
-        // Chama o método que futuramente vai no banco de dados
-        if (autenticarNoBanco(user, pass)) {
+        UsuarioDAO dao = new UsuarioDAO();
+        Usuario u = dao.autenticar(user, pass);
+
+        if (u != null) {
+            Sessao.login(u);          // <-- AQUI
             abrirTelaPrincipal(stageLogin);
         } else {
             lblErro.setText("Usuário ou senha incorretos.");
             lblErro.setVisible(true);
-            txtSenha.clear(); // Limpa a senha para tentar de novo
+            txtSenha.clear();
         }
-    }
-
-    private boolean autenticarNoBanco(String usuario, String senha) {
-        // -----------------------------------------------------------------------
-        // TODO H3: INTEGRACAO COM POSTGRESQL (Tabela de Usuários)
-        // 1. Conectar via JDBC.
-        // 2. Fazer SELECT * FROM usuarios WHERE login = ? AND senha = ?
-        // OBS: Em produção, as senhas devem estar em hash (ex: BCrypt), nunca em texto puro!
-        // -----------------------------------------------------------------------
-
-        // MOCK TEMPORÁRIO PARA TESTAR A UI
-        return usuario.equals("admin") && senha.equals("123");
     }
 
     private void abrirTelaPrincipal(Stage stageLogin) {
