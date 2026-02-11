@@ -107,25 +107,22 @@ O sistema deverá ser uma aplicação **desktop**, desenvolvida em **Java**, uti
 **RNF-02 — Banco de dados**  
 O sistema deverá utilizar **PostgreSQL** como sistema gerenciador de banco de dados, com conexão local via JDBC.
 
-**RNF-03 — Funcionamento offline**  
-O sistema deverá funcionar **sem dependência de internet**, considerando que banco e aplicação estarão instalados localmente.
-
-**RNF-04 — Usabilidade**  
+**RNF-03 — Usabilidade**  
 A interface gráfica deverá ser **intuitiva e de fácil navegação**.
 
-**RNF-05 — Desempenho**  
+**RNF-04 — Desempenho**  
 As operações de consulta, cadastro e atualização deverão responder em um tempo **inferior a 2 segundos** em ambiente local.
 
-**RNF-06 — Segurança**  
+**RNF-05 — Segurança**  
 O acesso ao sistema deverá ser protegido por autenticação de usuários, garantindo que apenas usuários autorizados possam acessar certas funcionalidades e informações.
 
-**RNF-07 — Integridade dos dados**  
+**RNF-06 — Integridade dos dados**  
 O sistema deverá garantir a integridade dos dados armazenados, evitando inconsistências em operações de entrada e saída de estoque.
 
-**RNF-08 — Manutenibilidade**  
+**RNF-07 — Manutenibilidade**  
 O código do sistema deverá ser organizado em camadas, facilitando manutenção, evolução e correções futuras.
 
-**RNF-09 — Portabilidade**  
+**RNF-08 — Portabilidade**  
 O sistema deverá ser compatível com os sistemas operacionais **Windows** e **Linux**.
 
 ---
