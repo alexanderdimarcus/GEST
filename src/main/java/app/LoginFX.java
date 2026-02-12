@@ -13,6 +13,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import javafx.scene.input.KeyCode; // Importação necessária para manipular teclas
 
 public class LoginFX extends Application {
 
@@ -35,6 +36,14 @@ public class LoginFX extends Application {
 
         txtUsuario = new TextField();
         txtUsuario.setPromptText("Digite seu usuário ou e-mail");
+
+        // ALTERAÇÃO: Enter no campo usuário apenas muda o foco para a senha
+        txtUsuario.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.ENTER) {
+                txtSenha.requestFocus();
+                event.consume(); // Impede que o evento suba para o root e dispare o login
+            }
+        });
 
         txtSenha = new PasswordField();
         txtSenha.setPromptText("Digite sua senha");
@@ -61,11 +70,10 @@ public class LoginFX extends Application {
         root.setStyle("-fx-background-color: #f6f8fa;"); // Fundo cinza claro para destacar o card branco
         root.setPadding(new Insets(20));
 
-        // Permite logar apertando "Enter"
+        // Permite logar apertando "Enter" (Global - funcionará para o campo Senha)
         root.setOnKeyPressed(event -> {
-            switch (event.getCode()) {
-                case ENTER -> tentarLogin(stage);
-                default -> {}
+            if (event.getCode() == KeyCode.ENTER) {
+                tentarLogin(stage);
             }
         });
 

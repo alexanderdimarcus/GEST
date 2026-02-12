@@ -56,10 +56,10 @@ public class MainFX extends Application {
         VBox sidebar = new VBox();
         sidebar.setPrefWidth(260);
 
-    // Ajuste sutil na cor de fundo para destacar mais a logo
+        // Ajuste sutil na cor de fundo para destacar mais a logo
         sidebar.setStyle("-fx-background-color: #ffffff; -fx-border-color: #d0d7de; -fx-border-width: 0 1 0 0;");
 
-    // 1. LOGO REFINADA
+        // 1. LOGO REFINADA
         ImageView logoView = new ImageView();
         try {
             // Tenta carregar. Se falhar, não quebra o app.
@@ -79,22 +79,22 @@ public class MainFX extends Application {
             /* Ignora erro silenciosamente ou usa System.out */
         }
 
-    // Container para centralizar a logo se quiser
+        // Container para centralizar a logo se quiser
         HBox logoContainer = new HBox(logoView);
         logoContainer.setAlignment(Pos.CENTER_LEFT);
         logoContainer.setPadding(new Insets(0, 0, 10, 0));
 
-    // 2. INFORMAÇÕES DO USUÁRIO
+        // 2. INFORMAÇÕES DO USUÁRIO
         Label lblUser = new Label(Sessao.getUsuario().getNomeCompleto()); // Usa Nome Completo é mais formal
         lblUser.getStyleClass().addAll(Styles.TITLE_4);
         lblUser.setWrapText(true); // Quebra linha se o nome for longo
 
-    // Pega o cargo do usuário
+        // Pega o cargo do usuário
         String cargoTexto = Sessao.getUsuario().getCargo() != null ? Sessao.getUsuario().getCargo() : "Colaborador";
         Label lblCargo = new Label(cargoTexto.toUpperCase());
         lblCargo.getStyleClass().addAll(Styles.TEXT_SMALL, Styles.TEXT_MUTED);
 
-    // Cria um "Avatar" simples
+        // Cria um "Avatar" simples
         Label lblAvatar = new Label(Sessao.getUsuario().getLogin().substring(0, 1).toUpperCase());
         lblAvatar.setStyle("-fx-background-color: #0969da; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 50%; -fx-min-width: 35; -fx-min-height: 35; -fx-alignment: center;");
 
@@ -123,8 +123,14 @@ public class MainFX extends Application {
 
         btnDash.setOnAction(e -> rootLayout.setCenter(criarDashboard()));
         btnConsulta.setOnAction(e -> rootLayout.setCenter(criarTelaConsulta()));
-        btnControle.setOnAction(e -> rootLayout.setCenter(criarTelaControle()));
-        btnFornecedores.setOnAction(e -> rootLayout.setCenter(criarTelaFornecedores()));
+
+        // ALTERAÇÃO: Telas redirecionadas temporariamente para "Em Desenvolvimento"
+        btnControle.setOnAction(e -> rootLayout.setCenter(criarTelaTemporaria("Movimentação")));
+        // Original: btnControle.setOnAction(e -> rootLayout.setCenter(criarTelaControle()));
+
+        btnFornecedores.setOnAction(e -> rootLayout.setCenter(criarTelaTemporaria("Fornecedores")));
+        // Original: btnFornecedores.setOnAction(e -> rootLayout.setCenter(criarTelaFornecedores()));
+
         btnRelatorios.setOnAction(e -> rootLayout.setCenter(criarTelaTemporaria("Relatórios (H11)")));
 
         VBox botoesLayout = new VBox(2, btnDash, btnConsulta, btnControle, btnFornecedores, btnRelatorios);
