@@ -143,8 +143,9 @@ A ferramenta Jira foi utilizada para organizar o backlog, as sprints e as tarefa
 
 - **Data de kick-off:** 19/12/2025  
 - **Total de sprints planejadas:** 4
-- **Sprint Atual:** 1 (Configuração e Planejamento)  
-    - **Período da Sprint 1:** 19/12/2025 a 06/02/2026   
+- **Sprint Atual:** 2 (Configuração do Banco de dados e UI)  
+    - **Período da Sprint 1:** 19/12/2025 a 06/02/2026
+    - **Período da Sprint 2:** 07/02/2026 a 20/02/2026   
 
 ### Transbordo de Tarefas
 
