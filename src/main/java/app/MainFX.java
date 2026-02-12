@@ -2,7 +2,16 @@ package app;
 
 import core.*;
 import core.Sessao;
+import dao.ProdutoDAO;
+import dao.ConexaoBD;
 
+import javafx.scene.layout.Region;
+import javafx.scene.layout.Priority;
+import java.sql.Connection;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.scene.control.cell.PropertyValueFactory;
+import java.util.List;
 import atlantafx.base.theme.PrimerLight;
 import atlantafx.base.theme.Styles;
 import javafx.application.Application;
@@ -12,10 +21,18 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
+import javafx.beans.property.SimpleStringProperty;
+
+import java.util.Comparator;
 
 public class MainFX extends Application {
 
     private BorderPane rootLayout;
+    private ProdutoDAO produtoDAO = new ProdutoDAO();
 
     @Override
     public void start(Stage stage) {
@@ -38,31 +55,66 @@ public class MainFX extends Application {
     private VBox criarMenuLateral() {
         VBox sidebar = new VBox();
         sidebar.setPrefWidth(260);
-        // Usando uma cor levemente destacada do tema para a sidebar
-        sidebar.setStyle("-fx-background-color: #f6f8fa; -fx-border-color: #d0d7de; -fx-border-width: 0 1 0 0;");
 
-        // --- Cabeçalho ---
-        Label lblLogo = new Label("GEST");
-        lblLogo.getStyleClass().addAll(Styles.TITLE_1);
-        lblLogo.setStyle("-fx-font-style: italic; -fx-text-fill: #0969da;"); // Azul primer
+    // Ajuste sutil na cor de fundo para destacar mais a logo
+        sidebar.setStyle("-fx-background-color: #ffffff; -fx-border-color: #d0d7de; -fx-border-width: 0 1 0 0;");
 
-        Label lblSub = new Label("Gestão de Estoque");
-        lblSub.getStyleClass().addAll(Styles.TEXT_MUTED, Styles.TITLE_4);
+    // 1. LOGO REFINADA
+        ImageView logoView = new ImageView();
+        try {
+            // Tenta carregar. Se falhar, não quebra o app.
+            java.io.InputStream is = getClass().getResourceAsStream("/logoG.png");
+            if (is == null) is = getClass().getResourceAsStream("/images/logoG.png"); // Tenta subpasta
 
-        Label lblUser = new Label(Sessao.getUsuario().getLogin());
-        lblUser.getStyleClass().addAll(Styles.ACCENT);
-        lblUser.setPadding(new Insets(10, 0, 5, 0));
+            if (is != null) {
+                logoView.setImage(new Image(is));
+                // Aumentei um pouco para preencher melhor
+                logoView.setFitWidth(160);
+                logoView.setPreserveRatio(true);
+                // TRUQUE DE QUALIDADE: Suaviza a imagem
+                logoView.setSmooth(true);
+                logoView.setCache(true);
+            }
+        } catch (Exception e) {
+            /* Ignora erro silenciosamente ou usa System.out */
+        }
 
-        Button btnLogout = new Button("Sair do Sistema");
-        btnLogout.getStyleClass().addAll(Styles.BUTTON_OUTLINED, Styles.DANGER);
-        btnLogout.setMaxWidth(Double.MAX_VALUE);
+    // Container para centralizar a logo se quiser
+        HBox logoContainer = new HBox(logoView);
+        logoContainer.setAlignment(Pos.CENTER_LEFT);
+        logoContainer.setPadding(new Insets(0, 0, 10, 0));
+
+    // 2. INFORMAÇÕES DO USUÁRIO
+        Label lblUser = new Label(Sessao.getUsuario().getNomeCompleto()); // Usa Nome Completo é mais formal
+        lblUser.getStyleClass().addAll(Styles.TITLE_4);
+        lblUser.setWrapText(true); // Quebra linha se o nome for longo
+
+    // Pega o cargo do usuário
+        String cargoTexto = Sessao.getUsuario().getCargo() != null ? Sessao.getUsuario().getCargo() : "Colaborador";
+        Label lblCargo = new Label(cargoTexto.toUpperCase());
+        lblCargo.getStyleClass().addAll(Styles.TEXT_SMALL, Styles.TEXT_MUTED);
+
+    // Cria um "Avatar" simples
+        Label lblAvatar = new Label(Sessao.getUsuario().getLogin().substring(0, 1).toUpperCase());
+        lblAvatar.setStyle("-fx-background-color: #0969da; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 50%; -fx-min-width: 35; -fx-min-height: 35; -fx-alignment: center;");
+
+        VBox userDetails = new VBox(2, lblUser, lblCargo);
+        HBox userBox = new HBox(10, lblAvatar, userDetails);
+        userBox.setAlignment(Pos.CENTER_LEFT);
+        userBox.setPadding(new Insets(10, 0, 10, 0));
+
+        // 3. BOTÃO DE SAIR
+        Button btnLogout = new Button("Sair");
+        btnLogout.getStyleClass().addAll(Styles.BUTTON_OUTLINED, Styles.SMALL); // Botão menor
+        btnLogout.setPrefWidth(100);
         btnLogout.setOnAction(e -> onLogout());
 
-        VBox header = new VBox(5, lblLogo, lblSub, lblUser, btnLogout);
-        header.setPadding(new Insets(30, 20, 30, 20));
+        // Montagem do Header
+        VBox header = new VBox(15, logoContainer, userBox, btnLogout);
+        header.setPadding(new Insets(30, 20, 20, 20));
         header.setAlignment(Pos.CENTER_LEFT);
 
-        // --- Navegação ---
+        // --- Navegação
         Button btnDash = criarBotaoMenu("Dashboard");
         Button btnConsulta = criarBotaoMenu("Consulta de Estoque");
         Button btnControle = criarBotaoMenu("Movimentação");
@@ -76,9 +128,31 @@ public class MainFX extends Application {
         btnRelatorios.setOnAction(e -> rootLayout.setCenter(criarTelaTemporaria("Relatórios (H11)")));
 
         VBox botoesLayout = new VBox(2, btnDash, btnConsulta, btnControle, btnFornecedores, btnRelatorios);
-        VBox.setVgrow(botoesLayout, Priority.ALWAYS);
 
-        sidebar.getChildren().addAll(header, botoesLayout);
+        // --- STATUS DA CONEXÃO ---
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+
+        Label lblStatusBD = new Label("● Conectado: PostgreSQL");
+        lblStatusBD.getStyleClass().add(Styles.TEXT_SMALL);
+        lblStatusBD.setPadding(new Insets(0, 0, 10, 20)); // Margem inferior e esquerda
+
+        // Lógica simples de verificação (Visual)
+        try (Connection conn = ConexaoBD.conectar()) {
+            if (conn != null && !conn.isClosed()) {
+                lblStatusBD.setStyle("-fx-text-fill: green; -fx-font-size: 11px;");
+            }
+        } catch (Exception e) {
+            lblStatusBD.setText("● Offline / Erro BD");
+            lblStatusBD.setStyle("-fx-text-fill: red; -fx-font-size: 11px;");
+        }
+
+        Label lblVersao = new Label("v1.0.0 (Sprint 2)");
+        lblVersao.getStyleClass().addAll(Styles.TEXT_MUTED, Styles.TEXT_SMALL);
+        lblVersao.setPadding(new Insets(0, 0, 20, 20));
+
+        // Adiciona tudo na sidebar
+        sidebar.getChildren().addAll(header, botoesLayout, spacer, lblStatusBD, lblVersao);
         return sidebar;
     }
 
@@ -99,11 +173,25 @@ public class MainFX extends Application {
         Label lblTitulo = new Label("Visão Geral");
         lblTitulo.getStyleClass().addAll(Styles.TITLE_1);
 
+        // 1. Buscando dados reais
+        List<Produto> listaProdutos = produtoDAO.listarTodos();
+
+        // Cálculo: Total de Itens
+        int totalProdutos = listaProdutos.size();
+
+        // Cálculo: Estoque Crítico
+        long estoqueCritico = listaProdutos.stream()
+                .filter(p -> p.getQntdDisp() < 10)
+                .count();
+
+        // Cálculo: Valor total em estoque
+        double valorEmEstoque = listaProdutos.stream().mapToDouble(p -> p.getQntdDisp() * p.getValorUnitVenda()).sum();
+
         HBox cards = new HBox(20);
         cards.getChildren().addAll(
-                criarCard("Catálogo Ativo", "", "Produtos cadastrados"),
-                criarCard("Estoque Crítico", "", "Abaixo do mínimo ideal"),
-                criarCard("Saídas Hoje", "", "Volume de movimentação")
+                criarCard("Catálogo Ativo", String.valueOf(totalProdutos), "Produtos cadastrados"),
+                criarCard("Estoque Crítico", String.valueOf(estoqueCritico), "Abaixo de 10 un."),
+                criarCard("Valor em Estoque", formatarValorAbreviado(valorEmEstoque), "Preço de venda")
         );
 
         Label lblRecentes = new Label("Últimas Movimentações");
@@ -111,7 +199,7 @@ public class MainFX extends Application {
         VBox.setMargin(lblRecentes, new Insets(20, 0, 0, 0));
 
         TableView<String> tabRecentes = new TableView<>();
-        tabRecentes.getStyleClass().add(Styles.STRIPED); // Tabela listrada
+        tabRecentes.getStyleClass().add(Styles.STRIPED);
         tabRecentes.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         tabRecentes.getColumns().addAll(
                 new TableColumn<>("Ação"), new TableColumn<>("Produto"),
@@ -147,52 +235,190 @@ public class MainFX extends Application {
     // =================================================================================
     // TELA 1: CONSULTA DE ESTOQUE (Busca Avançada)
     // =================================================================================
+
     private VBox criarTelaConsulta() {
         Label lblTitulo = new Label("Consulta de Estoque");
         lblTitulo.getStyleClass().addAll(Styles.TITLE_1);
 
-        // --- BARRA DE BUSCA AVANÇADA ---
+        // 1. CARREGAMENTO DE DADOS (Master Data)
+        // Carregamos tudo do banco uma vez para memória para filtrar rápido
+        List<Produto> listaOriginal = produtoDAO.listarTodos();
+        ObservableList<Produto> masterData = FXCollections.observableArrayList(listaOriginal);
+
+        // 2. FILTROS E BUSCA (FilteredList)
+        // Envolvemos a lista original em uma lista filtrável
+        FilteredList<Produto> filteredData = new FilteredList<>(masterData, p -> true);
+
+        // Componentes de Filtro
         TextField txtBusca = new TextField();
-        txtBusca.setPromptText("Buscar por código, nome, marca...");
-        txtBusca.setPrefWidth(300);
+        txtBusca.setPromptText("🔎 Buscar por nome, código ou categoria...");
+        txtBusca.setPrefWidth(320);
 
-        ComboBox<String> cmbCategoria = new ComboBox<>();
-        cmbCategoria.getItems().addAll("Todas Categorias", "Eletrônicos", "Cosméticos", "Perecíveis");
-        cmbCategoria.setValue("Todas Categorias");
+        ComboBox<String> cmbOrdenacao = new ComboBox<>();
+        cmbOrdenacao.getItems().addAll(
+                "Padrão (Código)",
+                "Maior Quantidade",
+                "Menor Quantidade",
+                "Maior Valor",
+                "Menor Valor",
+                "Nome (A-Z)"
+        );
+        cmbOrdenacao.setValue("Padrão (Código)");
+        cmbOrdenacao.setPrefWidth(180);
 
-        ComboBox<String> cmbStatus = new ComboBox<>();
-        cmbStatus.getItems().addAll("Qualquer Status", "Estoque Normal", "Estoque Crítico (H12)", "Vencimento Próximo");
-        cmbStatus.setValue("Qualquer Status");
+        // Botão de "Refresh" caso novos dados entrem no banco
+        Button btnAtualizar = new Button("Recarregar");
+        btnAtualizar.getStyleClass().addAll(Styles.BUTTON_OUTLINED);
+        btnAtualizar.setOnAction(e -> {
+            masterData.setAll(produtoDAO.listarTodos());
+            txtBusca.clear();
+        });
 
-        Button btnBuscar = new Button("Filtrar");
-        btnBuscar.getStyleClass().addAll(Styles.ACCENT); // Botão Azul de ação primária
+        HBox barraFerramentas = new HBox(10, txtBusca, cmbOrdenacao, btnAtualizar);
+        barraFerramentas.setAlignment(Pos.CENTER_LEFT);
 
-        Button btnLimpar = new Button("Limpar");
-        btnLimpar.getStyleClass().addAll(Styles.BUTTON_OUTLINED);
-
-        HBox filtros = new HBox(10, txtBusca, cmbCategoria, cmbStatus, btnBuscar, btnLimpar);
-        filtros.setAlignment(Pos.CENTER_LEFT);
-
-        // --- FERRAMENTAS EXTRAS ---
-        Button btnDetalhes = new Button("Visualizar Ficha Técnica");
-        Button btnExportar = new Button("Exportar (.csv)");
-        btnExportar.getStyleClass().addAll(Styles.SUCCESS, Styles.BUTTON_OUTLINED); // Verde vazado
-
-        HBox acoesTabela = new HBox(10, btnDetalhes, new Region(), btnExportar);
-        HBox.setHgrow(acoesTabela.getChildren().get(1), Priority.ALWAYS); // Espaçador
-
-        // --- TABELA ---
+        // 3. TABELA (SortedList)
         TableView<Produto> tabela = new TableView<>();
         tabela.getStyleClass().addAll(Styles.STRIPED, Styles.BORDERED);
         tabela.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        tabela.getColumns().addAll(
-                new TableColumn<>("Cód"), new TableColumn<>("Descrição"),
-                new TableColumn<>("Categoria"), new TableColumn<>("Estoque"),
-                new TableColumn<>("Status")
+
+        // --- Definição das Colunas ---
+
+        TableColumn<Produto, Integer> colId = new TableColumn<>("Cód");
+        colId.setCellValueFactory(new PropertyValueFactory<>("codigo"));
+        colId.setMaxWidth(80);
+
+        TableColumn<Produto, String> colDesc = new TableColumn<>("Descrição");
+        colDesc.setCellValueFactory(new PropertyValueFactory<>("descricao"));
+
+        TableColumn<Produto, String> colCat = new TableColumn<>("Categoria");
+        colCat.setCellValueFactory(new PropertyValueFactory<>("categoria"));
+        colCat.setMaxWidth(150);
+
+        // Coluna Especial: Fabricante (se Cosmético) ou Fornecedor (Geral)
+        TableColumn<Produto, String> colOrigem = new TableColumn<>("Fabricante / Fornecedor");
+        colOrigem.setCellValueFactory(cellData -> {
+            Produto p = cellData.getValue();
+            if (p instanceof Cosmetico) {
+                return new SimpleStringProperty(((Cosmetico) p).getFabricante());
+            }
+            return new SimpleStringProperty(p.getFornecedor().getNome());
+        });
+
+        TableColumn<Produto, Integer> colQtd = new TableColumn<>("Estoque");
+        colQtd.setCellValueFactory(new PropertyValueFactory<>("qntdDisp"));
+        colQtd.setMaxWidth(100);
+        // Destaca em vermelho se estoque baixo
+        colQtd.setCellFactory(column -> new TableCell<Produto, Integer>() {
+            @Override
+            protected void updateItem(Integer item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item.toString());
+                    if (item < 5) {
+                        setStyle("-fx-text-fill: #cf222e; -fx-font-weight: bold;"); // Vermelho
+                    } else {
+                        setStyle("-fx-text-fill: #1a7f37;"); // Verde
+                    }
+                }
+            }
+        });
+
+        TableColumn<Produto, String> colValor = new TableColumn<>("Valor (R$)");
+        colValor.setCellValueFactory(cellData ->
+                new SimpleStringProperty(String.format("R$ %.2f", cellData.getValue().getValorUnitVenda()))
         );
+        colValor.setMaxWidth(120);
+
+        tabela.getColumns().addAll(colId, colDesc, colCat, colOrigem, colQtd, colValor);
+
+        // 4. LÓGICA DE FILTRAGEM (Ao digitar)
+        txtBusca.textProperty().addListener((observable, oldValue, newValue) -> {
+            filteredData.setPredicate(produto -> {
+                // Se o filtro estiver vazio, mostra tudo
+                if (newValue == null || newValue.isEmpty()) {
+                    return true;
+                }
+
+                String lowerCaseFilter = newValue.toLowerCase();
+
+                // Regras de busca:
+                if (String.valueOf(produto.getCodigo()).contains(lowerCaseFilter)) return true;
+                if (produto.getDescricao().toLowerCase().contains(lowerCaseFilter)) return true;
+                if (produto.getCategoria().toLowerCase().contains(lowerCaseFilter)) return true;
+
+                // Busca extra: Verifica fabricante se for cosmético
+                if (produto instanceof Cosmetico) {
+                    if (((Cosmetico) produto).getFabricante().toLowerCase().contains(lowerCaseFilter)) return true;
+                }
+
+                return false; // Não encontrou nada
+            });
+        });
+
+        // 5. LÓGICA DE ORDENAÇÃO (ComboBox + Tabela)
+        // Envolvemos a Lista Filtrada em uma Lista Ordenada
+        SortedList<Produto> sortedData = new SortedList<>(filteredData);
+
+        // Vincula o comparador da tabela (clique no cabeçalho) à lista ordenada
+        sortedData.comparatorProperty().bind(tabela.comparatorProperty());
+
+        // Adiciona lógica do ComboBox de Ordenação
+        cmbOrdenacao.setOnAction(e -> {
+            String selecionado = cmbOrdenacao.getValue();
+            switch (selecionado) {
+                case "Maior Quantidade":
+                    tabela.getSortOrder().clear();
+                    colQtd.setSortType(TableColumn.SortType.DESCENDING);
+                    tabela.getSortOrder().add(colQtd);
+                    break;
+                case "Menor Quantidade":
+                    tabela.getSortOrder().clear();
+                    colQtd.setSortType(TableColumn.SortType.ASCENDING);
+                    tabela.getSortOrder().add(colQtd);
+                    break;
+                case "Maior Valor":
+                    // Precisamos ordenar pela propriedade original, não pela String formatada
+                    // Pequeno hack: forçar comparador na lista ou usar a coluna se ela fosse numérica
+                    // Como a colValor é String (R$), a ordenação padrão falha.
+                    // Vamos ordenar a lista diretamente:
+                    tabela.getSortOrder().clear(); // Remove ordenação visual de coluna
+                    sortedData.setComparator(Comparator.comparingDouble(Produto::getValorUnitVenda).reversed());
+                    break;
+                case "Menor Valor":
+                    tabela.getSortOrder().clear();
+                    sortedData.setComparator(Comparator.comparingDouble(Produto::getValorUnitVenda));
+                    break;
+                case "Nome (A-Z)":
+                    tabela.getSortOrder().clear();
+                    colDesc.setSortType(TableColumn.SortType.ASCENDING);
+                    tabela.getSortOrder().add(colDesc);
+                    break;
+                default: // Padrão
+                    tabela.getSortOrder().clear();
+                    colId.setSortType(TableColumn.SortType.ASCENDING);
+                    tabela.getSortOrder().add(colId);
+                    sortedData.setComparator(null); // Reseta comparadores manuais
+                    break;
+            }
+        });
+
+        tabela.setItems(sortedData); // Define a lista inteligente na tabela
         VBox.setVgrow(tabela, Priority.ALWAYS);
 
-        VBox layout = new VBox(20, lblTitulo, filtros, tabela, acoesTabela);
+        // Rodapé com totais
+        Label lblTotal = new Label();
+        lblTotal.getStyleClass().add(Styles.TEXT_MUTED);
+        // Atualiza o contador sempre que a lista mudar (filtrar ou carregar)
+        filteredData.predicateProperty().addListener(o ->
+                lblTotal.setText("Exibindo " + filteredData.size() + " registros")
+        );
+        lblTotal.setText("Exibindo " + masterData.size() + " registros"); // Valor inicial
+
+        VBox layout = new VBox(15, lblTitulo, barraFerramentas, tabela, lblTotal);
         layout.setPadding(new Insets(40));
         return layout;
     }
@@ -200,6 +426,7 @@ public class MainFX extends Application {
     // =================================================================================
     // TELA 2: CONTROLE DE ESTOQUE
     // =================================================================================
+
     private VBox criarTelaControle() {
         Label lblTitulo = new Label("Movimentação de Estoque");
         lblTitulo.getStyleClass().addAll(Styles.TITLE_1);
@@ -324,24 +551,36 @@ public class MainFX extends Application {
     public static void main(String[] args) {
         launch(args);
     }
+
     // =================================================================================
     // NAVEGAÇÃO E SESSÃO
     // =================================================================================
+
     private void onLogout() {
         try {
-            // Abre a tela de Login novamente
             Sessao.logout();
             LoginFX login = new LoginFX();
             Stage stageLogin = new Stage();
             login.start(stageLogin);
-
-            // Pega a referência da janela atual (MainFX) através do rootLayout e a fecha
             Stage stageAtual = (Stage) rootLayout.getScene().getWindow();
             stageAtual.close();
 
         } catch (Exception e) {
             e.printStackTrace();
-            // Aqui você pode colocar um Alerta de erro caso o JavaFX falhe ao abrir a tela
+        }
+    }
+
+    // =================================================================================
+    // AJUSTES
+    // =================================================================================
+
+    public static String formatarValorAbreviado(double valor) {
+        if (valor < 1_000) {
+            return String.format("R$ %.0f", valor);
+        } else if (valor < 1_000_000) {
+            return String.format("R$ %.1f mil", valor / 1_000);
+        } else {
+            return String.format("R$ %.1f milhão", valor / 1_000_000);
         }
     }
 }
