@@ -30,9 +30,9 @@ Inicialmente, o GEST foi concebido como um projeto acadêmico na disciplina de P
 Na disciplina de Processo de Desenvolvimento de Software (PDS), o sistema passa por um processo de expansão e aprimoramento, deixando de ser apenas uma aplicação conceitual para se tornar um sistema mais completo e próximo de um cenário real. O objetivo nesta nova etapa é desenvolver uma interface gráfica intuitiva para usuários finais, integrar o sistema a um banco de dados, além de aplicar práticas de engenharia de software, como metodologias ágeis, planejamento incremental e boas práticas de projeto.
 
 <p align="center">
-  <img src="..."/>
+  <img src="https://i.imgur.com/dAKdR0y.png"/>
   <br>
-  <em>Figura 2 – Versão PDS</em>
+  <em>Figura 2 – Versão PDS (BETA)</em> 
 </p>
 
 ---
@@ -160,8 +160,8 @@ O backlog inicial foi composto pelas principais histórias do sistema, relaciona
 - Movimentação de estoque;
 - Dashboard e relatórios.
 
-O backlog atual mantém as mesmas histórias, não houve alterações.  
-Como o sistema ainda não foi implementado, nenhuma das funcionalidades planejadas foi totalmente executada até o momento.
+O backlog atual houve alterações, necessidades surgiram e viraram histórias.  
+O sistema atualmente está com o dashboard e a tela de consulta de produtos funcioando.
 
 ---
 
@@ -212,4 +212,4 @@ O projeto do sistema segue os seguintes princípios e boas práticas:
 
 ## Conclusão
 
-O projeto encontra-se na fase inicial (Sprint 1).
+O projeto encontra-se em desenvolvimento (Sprint 2).
