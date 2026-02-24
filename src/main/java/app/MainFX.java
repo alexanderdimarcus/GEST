@@ -272,7 +272,8 @@ public class MainFX extends Application {
         cmbOrdenacao.setValue("Padrão (Código)");
         cmbOrdenacao.setPrefWidth(180);
 
-        // Botão de "Refresh" caso novos dados entrem no banco
+
+// Botão de "Refresh" caso novos dados entrem no banco
         Button btnAtualizar = new Button("Recarregar");
         btnAtualizar.getStyleClass().addAll(Styles.BUTTON_OUTLINED);
         btnAtualizar.setOnAction(e -> {
@@ -280,11 +281,51 @@ public class MainFX extends Application {
             txtBusca.clear();
         });
 
-        HBox barraFerramentas = new HBox(10, txtBusca, cmbOrdenacao, btnAtualizar);
+        // 1. PRIMEIRO DECLARAMOS A TABELA AQUI EM CIMA!
+        TableView<Produto> tabela = new TableView<>();
+        tabela.getStyleClass().addAll(Styles.STRIPED, Styles.BORDERED);
+        tabela.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+
+        // 2. AGORA SIM, CRIAMOS OS BOTÕES DE AÇÃO
+        Button btnNovo = new Button("Cadastrar Produto");
+        btnNovo.getStyleClass().addAll(Styles.SUCCESS);
+        btnNovo.setOnAction(e -> abrirModalCadastroProduto(masterData));
+
+        Button btnExcluir = new Button("Excluir Selecionado");
+        btnExcluir.getStyleClass().addAll(Styles.DANGER);
+        btnExcluir.setOnAction(e -> {
+            Produto selecionado = tabela.getSelectionModel().getSelectedItem();
+            if (selecionado == null) {
+                mostrarErro("Atenção", "Selecione um produto na tabela clicando nele primeiro.");
+                return;
+            }
+
+            Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION,
+                    "Tem certeza que deseja excluir o produto '" + selecionado.getDescricao() + "' (Cód: " + selecionado.getCodigo() + ")?",
+                    ButtonType.YES, ButtonType.NO);
+            confirmacao.setHeaderText("Confirmação de Exclusão");
+
+            confirmacao.showAndWait().ifPresent(resposta -> {
+                if (resposta == ButtonType.YES) {
+                    try {
+                        produtoDAO.excluir(selecionado.getCodigo());
+                        masterData.remove(selecionado);
+                        mostrarAlerta("Produto excluído com sucesso!");
+                    } catch (Exception ex) {
+                        mostrarErro("Erro", "Não foi possível excluir o produto: " + ex.getMessage());
+                    }
+                }
+            });
+        });
+
+        // 3. MONTAMOS A BARRA DE FERRAMENTAS
+        Region espacador = new Region();
+        HBox.setHgrow(espacador, Priority.ALWAYS);
+
+        HBox barraFerramentas = new HBox(10, txtBusca, cmbOrdenacao, btnAtualizar, espacador, btnExcluir, btnNovo);
         barraFerramentas.setAlignment(Pos.CENTER_LEFT);
 
         // 3. TABELA (SortedList)
-        TableView<Produto> tabela = new TableView<>();
         tabela.getStyleClass().addAll(Styles.STRIPED, Styles.BORDERED);
         tabela.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
 
@@ -418,15 +459,183 @@ public class MainFX extends Application {
         // Rodapé com totais
         Label lblTotal = new Label();
         lblTotal.getStyleClass().add(Styles.TEXT_MUTED);
-        // Atualiza o contador sempre que a lista mudar (filtrar ou carregar)
-        filteredData.predicateProperty().addListener(o ->
-                lblTotal.setText("Exibindo " + filteredData.size() + " registros")
-        );
-        lblTotal.setText("Exibindo " + masterData.size() + " registros"); // Valor inicial
+
+        // Criamos uma mini-função para atualizar o texto
+        Runnable atualizarContador = () -> lblTotal.setText("Exibindo " + filteredData.size() + " registros");
+
+        // 1. Atualiza quando o filtro de busca muda (ao digitar)
+        filteredData.predicateProperty().addListener(o -> atualizarContador.run());
+
+        // 2. A MÁGICA NOVA: Atualiza automaticamente quando um produto é salvo ou recarregado
+        masterData.addListener((javafx.collections.ListChangeListener.Change<? extends Produto> c) -> atualizarContador.run());
+
+        atualizarContador.run(); // Define o valor inicial assim que a tela abre
 
         VBox layout = new VBox(15, lblTitulo, barraFerramentas, tabela, lblTotal);
         layout.setPadding(new Insets(40));
         return layout;
+    }
+
+
+    // =================================================================================
+    // MODAL DE CADASTRO DE PRODUTOS (Dinâmico e Integrado ao Banco)
+    // =================================================================================
+    private void abrirModalCadastroProduto(ObservableList<Produto> listaAtual) {
+        Stage stageModal = new Stage();
+        stageModal.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+        stageModal.setTitle("Novo Cadastro de Produto");
+
+        // 1. Campos Básicos
+        TextField txtCodigo = new TextField();
+        TextField txtDescricao = new TextField();
+        TextField txtCategoria = new TextField();
+        TextField txtPreco = new TextField();
+        aplicarMascaraMoeda(txtPreco);
+        TextField txtLucro = new TextField();
+        TextField txtQtd = new TextField();
+
+        // 2. ComboBox de Fornecedores
+        ComboBox<Fornecedor> cmbFornecedor = new ComboBox<>();
+        cmbFornecedor.getItems().addAll(new dao.FornecedorDAO().listarTodos());
+        cmbFornecedor.setPromptText("Selecione um fornecedor...");
+
+        // 3. Campos Específicos (Declarados fora para o Botão Salvar conseguir ler)
+        TextField txtValidade = new TextField();
+        txtValidade.setPromptText("dd/mm/aaaa");
+        aplicarMascaraData(txtValidade);
+        TextField txtFabricante = new TextField();
+        TextField txtGarantia = new TextField();
+        txtGarantia.setPromptText("Ex: 12");
+
+        // 4. ComboBox de Tipo e Área Dinâmica
+        ComboBox<String> cmbTipo = new ComboBox<>();
+        cmbTipo.getItems().addAll("Cosmético", "Eletrônico", "Perecível");
+        cmbTipo.setPromptText("Selecione o tipo...");
+
+        VBox areaDinamica = new VBox(10);
+        areaDinamica.setPadding(new Insets(10));
+        areaDinamica.setStyle("-fx-background-color: #f6f8fa; -fx-border-color: #d0d7de; -fx-border-radius: 4px;");
+
+        // Listener: Mostra os campos corretos baseados no Tipo escolhido
+        cmbTipo.setOnAction(e -> {
+            areaDinamica.getChildren().clear();
+            String selecionado = cmbTipo.getValue();
+
+            if ("Cosmético".equals(selecionado)) {
+                areaDinamica.getChildren().addAll(
+                        new Label("Data de Validade:"), txtValidade,
+                        new Label("Fabricante:"), txtFabricante
+                );
+            } else if ("Eletrônico".equals(selecionado)) {
+                areaDinamica.getChildren().addAll(
+                        new Label("Meses de Garantia:"), txtGarantia
+                );
+            } else if ("Perecível".equals(selecionado)) {
+                areaDinamica.getChildren().addAll(
+                        new Label("Data de Validade:"), txtValidade
+                );
+            }
+        });
+
+        // 5. Montando o Formulário
+        GridPane form = new GridPane();
+        form.setHgap(10);
+        form.setVgap(15);
+        form.addRow(0, new Label("Código:"), txtCodigo, new Label("Quantidade:"), txtQtd);
+        form.addRow(1, new Label("Descrição:"), txtDescricao, new Label("Categoria:"), txtCategoria);
+        form.addRow(2, new Label("Fornecedor:"), cmbFornecedor);
+        GridPane.setColumnSpan(cmbFornecedor, 3);
+        form.addRow(3, new Label("Preço Venda:"), txtPreco, new Label("Lucro (%):"), txtLucro);
+        form.addRow(4, new Label("Tipo:"), cmbTipo);
+
+        Button btnSalvar = new Button("Salvar Produto no Banco");
+        btnSalvar.getStyleClass().addAll(Styles.SUCCESS, Styles.LARGE);
+        btnSalvar.setMaxWidth(Double.MAX_VALUE);
+
+        // --- A MÁGICA: LÓGICA DE SALVAMENTO ---
+        btnSalvar.setOnAction(event -> {
+            try {
+                // Validação de Preenchimento Básico
+                if (txtCodigo.getText().isEmpty() || txtDescricao.getText().isEmpty() ||
+                        txtPreco.getText().isEmpty() || txtQtd.getText().isEmpty() ||
+                        cmbFornecedor.getValue() == null || cmbTipo.getValue() == null) {
+                    throw new IllegalArgumentException("Por favor, preencha todos os campos obrigatórios e selecione um fornecedor e um tipo.");
+                }
+
+                // Conversão dos tipos
+                int cod = Integer.parseInt(txtCodigo.getText());
+                String desc = txtDescricao.getText();
+                String cat = txtCategoria.getText();
+                int qtd = Integer.parseInt(txtQtd.getText());
+                // Substitui vírgula por ponto para não dar erro no Double
+                String precoLimpo = txtPreco.getText().replaceAll("[^\\d,]", "").replace(",", ".");
+                double preco = Double.parseDouble(precoLimpo);
+                double lucro = txtLucro.getText().isEmpty() ? 0.0 : Double.parseDouble(txtLucro.getText().replace(",", "."));
+                Fornecedor forn = cmbFornecedor.getValue();
+                String tipo = cmbTipo.getValue();
+
+                Produto novoProduto = null;
+                // Formatador para transformar a String dd/MM/yyyy em java.util.Date
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy");
+                sdf.setLenient(false); // Impede datas absurdas como 32/13/2025
+
+                // Criação do objeto por Polimorfismo
+                if ("Cosmético".equals(tipo)) {
+                    if (txtValidade.getText().isEmpty() || txtFabricante.getText().isEmpty()) {
+                        throw new IllegalArgumentException("Cosméticos exigem Data de Validade e Fabricante.");
+                    }
+                    java.util.Date validade = sdf.parse(txtValidade.getText());
+                    novoProduto = new Cosmetico(cod, desc, cat, qtd, preco, lucro, forn, validade, txtFabricante.getText());
+
+                } else if ("Eletrônico".equals(tipo)) {
+                    if (txtGarantia.getText().isEmpty()) {
+                        throw new IllegalArgumentException("Eletrônicos exigem o tempo de garantia (em meses).");
+                    }
+                    int garantia = Integer.parseInt(txtGarantia.getText());
+                    novoProduto = new Eletronico(cod, desc, cat, qtd, preco, lucro, forn, garantia);
+
+                } else if ("Perecível".equals(tipo)) {
+                    if (txtValidade.getText().isEmpty()) {
+                        throw new IllegalArgumentException("Produtos perecíveis exigem Data de Validade.");
+                    }
+                    java.util.Date validade = sdf.parse(txtValidade.getText());
+                    novoProduto = new ProdutoPerecivel(cod, desc, cat, qtd, preco, lucro, forn, validade);
+                }
+
+                // Salva no Banco de Dados
+                dao.ProdutoDAO daoProd = new dao.ProdutoDAO();
+                daoProd.salvar(novoProduto);
+
+                // Atualiza a tabela que está na janela principal atrás do modal
+                listaAtual.setAll(daoProd.listarTodos());
+
+                mostrarAlerta("Produto salvo com sucesso no banco de dados!");
+                stageModal.close();
+
+            } catch (NumberFormatException ex) {
+                mostrarErro("Erro de Formato", "Por favor, digite apenas números válidos nos campos: Código, Quantidade, Preço, Lucro e Garantia.");
+            } catch (java.text.ParseException ex) {
+                mostrarErro("Erro na Data", "Por favor, introduza uma data válida no formato dd/mm/aaaa (Ex: 25/12/2026).");
+            } catch (IllegalArgumentException ex) {
+                mostrarErro("Aviso", ex.getMessage());
+            } catch (java.sql.SQLException ex) {
+                if (ex.getMessage().contains("duplicate key")) {
+                    mostrarErro("Código Duplicado", "Já existe um produto com o código " + txtCodigo.getText() + " cadastrado no banco.");
+                } else {
+                    mostrarErro("Erro de Banco de Dados", ex.getMessage());
+                }
+            } catch (Exception ex) {
+                mostrarErro("Erro Inesperado", ex.getMessage());
+                ex.printStackTrace();
+            }
+        });
+
+        VBox layout = new VBox(20, form, new Label("Detalhes Específicos:"), areaDinamica, btnSalvar);
+        layout.setPadding(new Insets(30));
+
+        Scene scene = new Scene(layout, 700, 550);
+        stageModal.setScene(scene);
+        stageModal.showAndWait();
     }
 
     // =================================================================================
@@ -773,6 +982,76 @@ public class MainFX extends Application {
             });
         });
     }
+
+    private void aplicarMascaraData(TextField textField) {
+        final boolean[] isUpdating = {false};
+
+        textField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (isUpdating[0]) return;
+            isUpdating[0] = true;
+
+            // Remove tudo o que não for número
+            String apenasNumeros = newValue.replaceAll("[^\\d]", "");
+
+            // Trava: Limita a 8 dígitos (ddMMyyyy)
+            if (apenasNumeros.length() > 8) {
+                apenasNumeros = apenasNumeros.substring(0, 8);
+            }
+
+            StringBuilder sb = new StringBuilder(apenasNumeros);
+
+            // Insere as barras nas posições corretas
+            if (sb.length() > 4) {
+                sb.insert(4, "/"); // Barra do ano
+            }
+            if (sb.length() > 2) {
+                sb.insert(2, "/"); // Barra do mês
+            }
+
+            String mascara = sb.toString();
+
+            javafx.application.Platform.runLater(() -> {
+                textField.setText(mascara);
+                textField.positionCaret(mascara.length());
+                isUpdating[0] = false;
+            });
+        });
+    }
+
+    private void aplicarMascaraMoeda(TextField textField) {
+        final boolean[] isUpdating = {false};
+
+        textField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (isUpdating[0]) return;
+            isUpdating[0] = true;
+
+            // Deixa apenas os números digitados
+            String apenasNumeros = newValue.replaceAll("[^\\d]", "");
+
+            if (apenasNumeros.isEmpty()) {
+                javafx.application.Platform.runLater(() -> {
+                    textField.setText("");
+                    isUpdating[0] = false;
+                });
+                return;
+            }
+
+            // Divide por 100 para criar os centavos matematicamente
+            double valor = Double.parseDouble(apenasNumeros) / 100;
+
+            // Usa o formatador nativo do Java para a moeda do Brasil (R$ 1.500,00)
+            java.text.NumberFormat formatoMoeda = java.text.NumberFormat.getCurrencyInstance(java.util.Locale.of("pt", "BR"));
+            String textoFormatado = formatoMoeda.format(valor);
+
+            // Joga para a tela
+            javafx.application.Platform.runLater(() -> {
+                textField.setText(textoFormatado);
+                textField.positionCaret(textoFormatado.length()); // Mantém o cursor no fim
+                isUpdating[0] = false;
+            });
+        });
+    }
+
     // =================================================================================
     // MÉTODOS UTILITÁRIOS (ALERTAS)
     // =================================================================================

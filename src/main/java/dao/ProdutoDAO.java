@@ -74,7 +74,7 @@ public class ProdutoDAO {
     }
 
     // Metodo para SALVAR um novo produto (Insert)
-    public void salvar(Produto p) throws SQLException, ClassNotFoundException {
+    public void salvar(Produto p) throws SQLException {
         String sql = "INSERT INTO produtos (codigo, descricao, categoria, quantidade, valor_venda, percentual_lucro, fornecedor_id, tipo_produto, data_validade, fabricante, meses_garantia) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
@@ -113,6 +113,18 @@ public class ProdutoDAO {
 
             stmt.executeUpdate();
             System.out.println("Produto salvo com sucesso no banco!");
+        }
+    }
+    // Metodo para EXCLUIR um produto do banco
+    public void excluir(int codigo) throws SQLException {
+        String sql = "DELETE FROM produtos WHERE codigo = ?";
+
+        try (Connection conn = ConexaoBD.conectar();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, codigo);
+            stmt.executeUpdate();
+            System.out.println("Produto excluído com sucesso do banco!");
         }
     }
 }
