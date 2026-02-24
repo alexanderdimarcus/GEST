@@ -2,6 +2,6 @@ package app;
 
 public class Launcher {
     public static void main(String[] args) {
-        LoginFX.main(args);
+        LoginFX.main(args)  ;
     }
 }

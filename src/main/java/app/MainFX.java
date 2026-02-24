@@ -46,6 +46,7 @@ public class MainFX extends Application {
         Scene scene = new Scene(rootLayout, 1200, 768);
         stage.setTitle("GEST - Sistema de Gestão de Estoque");
         stage.setScene(scene);
+        stage.setMaximized(true);
         stage.show();
     }
 
@@ -128,8 +129,7 @@ public class MainFX extends Application {
         btnControle.setOnAction(e -> rootLayout.setCenter(criarTelaTemporaria("Movimentação")));
         // Original: btnControle.setOnAction(e -> rootLayout.setCenter(criarTelaControle()));
 
-        btnFornecedores.setOnAction(e -> rootLayout.setCenter(criarTelaTemporaria("Fornecedores")));
-        // Original: btnFornecedores.setOnAction(e -> rootLayout.setCenter(criarTelaFornecedores()));
+        btnFornecedores.setOnAction(e -> rootLayout.setCenter(criarTelaFornecedores()));
 
         btnRelatorios.setOnAction(e -> rootLayout.setCenter(criarTelaTemporaria("Relatórios (H11)")));
 
@@ -206,7 +206,7 @@ public class MainFX extends Application {
 
         TableView<String> tabRecentes = new TableView<>();
         tabRecentes.getStyleClass().add(Styles.STRIPED);
-        tabRecentes.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabRecentes.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
         tabRecentes.getColumns().addAll(
                 new TableColumn<>("Ação"), new TableColumn<>("Produto"),
                 new TableColumn<>("Qtd"), new TableColumn<>("Data/Hora")
@@ -286,7 +286,7 @@ public class MainFX extends Application {
         // 3. TABELA (SortedList)
         TableView<Produto> tabela = new TableView<>();
         tabela.getStyleClass().addAll(Styles.STRIPED, Styles.BORDERED);
-        tabela.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        tabela.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
 
         // --- Definição das Colunas ---
 
@@ -505,44 +505,148 @@ public class MainFX extends Application {
     }
 
     // =================================================================================
-    // TELA 3: FORNECEDORES
+    // TELA 3: FORNECEDORES (Nova Versão - Tabela Cheia)
     // =================================================================================
     private VBox criarTelaFornecedores() {
-        Label lblTitulo = new Label("Fornecedores");
+        Label lblTitulo = new Label("Fornecedores Cadastrados");
         lblTitulo.getStyleClass().addAll(Styles.TITLE_1);
 
-        SplitPane split = new SplitPane();
-        VBox.setVgrow(split, Priority.ALWAYS);
+        // --- TABELA DE CONSULTA ---
+        TableView<Fornecedor> tabela = new TableView<>();
+        tabela.getStyleClass().add(Styles.STRIPED);
+        tabela.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+        VBox.setVgrow(tabela, Priority.ALWAYS); // Faz a tabela crescer e preencher o espaço
 
-        // Formulário
+        TableColumn<Fornecedor, String> colNome = new TableColumn<>("Razão Social");
+        colNome.setCellValueFactory(new PropertyValueFactory<>("nome"));
+
+        TableColumn<Fornecedor, String> colCnpj = new TableColumn<>("CNPJ/CPF");
+        colCnpj.setCellValueFactory(new PropertyValueFactory<>("cnpjCpf"));
+        colCnpj.setMaxWidth(200);
+
+        TableColumn<Fornecedor, String> colContato = new TableColumn<>("Contato");
+        colContato.setCellValueFactory(new PropertyValueFactory<>("contato"));
+        colContato.setMaxWidth(250);
+
+        tabela.getColumns().addAll(colNome, colCnpj, colContato);
+
+        // Carrega dados
+        dao.FornecedorDAO fornecedorDAO = new dao.FornecedorDAO();
+        ObservableList<Fornecedor> listaFornecedores = FXCollections.observableArrayList(fornecedorDAO.listarTodos());
+        tabela.setItems(listaFornecedores);
+
+        // --- BOTÕES DE AÇÃO ---
+        Button btnNovo = new Button("Cadastrar Fornecedor");
+        btnNovo.getStyleClass().addAll(Styles.SUCCESS, Styles.LARGE);
+        // Chama a nossa nova janela (modal), passando a lista para ela se auto-atualizar
+        btnNovo.setOnAction(e -> abrirModalCadastroFornecedor(listaFornecedores));
+
+        Button btnExcluir = new Button("Excluir Selecionado");
+        btnExcluir.getStyleClass().addAll(Styles.DANGER, Styles.LARGE);
+        btnExcluir.setOnAction(e -> {
+            Fornecedor selecionado = tabela.getSelectionModel().getSelectedItem();
+            if (selecionado == null) {
+                mostrarErro("Atenção", "Selecione um fornecedor na tabela clicando nele primeiro.");
+                return;
+            }
+
+            // Confirmação de segurança
+            Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION,
+                    "Tem certeza que deseja excluir o fornecedor '" + selecionado.getNome() + "'?",
+                    ButtonType.YES, ButtonType.NO);
+            confirmacao.setHeaderText("Confirmação de Exclusão");
+
+            confirmacao.showAndWait().ifPresent(resposta -> {
+                if (resposta == ButtonType.YES) {
+                    try {
+                        fornecedorDAO.excluir(selecionado.getId());
+                        listaFornecedores.remove(selecionado); // Remove da tela
+                        mostrarAlerta("Fornecedor excluído com sucesso!");
+                    } catch (Exception ex) {
+                        // Se o fornecedor estiver associado a algum produto, o PostgreSQL bloqueia a exclusão
+                        mostrarErro("Ação Bloqueada", "Não é possível excluir este fornecedor pois existem produtos vinculados a ele no sistema.");
+                    }
+                }
+            });
+        });
+
+        HBox barraBotoes = new HBox(15, btnExcluir, new Region(), btnNovo);
+        HBox.setHgrow(barraBotoes.getChildren().get(1), Priority.ALWAYS); // Joga um botão pra cada lado
+        barraBotoes.setAlignment(Pos.CENTER);
+
+        VBox layout = new VBox(20, lblTitulo, tabela, barraBotoes);
+        layout.setPadding(new Insets(40));
+        return layout;
+    }
+
+    // =================================================================================
+    // MODAL DE CADASTRO DE FORNECEDORES
+    // =================================================================================
+    private void abrirModalCadastroFornecedor(ObservableList<Fornecedor> listaAtual) {
+        Stage stageModal = new Stage();
+        stageModal.initModality(javafx.stage.Modality.APPLICATION_MODAL); // Trava a tela de trás
+        stageModal.setTitle("Novo Cadastro de Fornecedor");
+
+        TextField txtCnpj = new TextField();
+        TextField txtNome = new TextField();
+        TextField txtContato = new TextField();
+
+        // Nossas máscaras mágicas continuam funcionando aqui!
+        aplicarMascaraCnpjCpf(txtCnpj);
+        aplicarMascaraContato(txtContato);
+
         GridPane form = new GridPane();
         form.setHgap(10);
         form.setVgap(15);
-        form.addRow(0, new Label("CNPJ:"), new TextField());
-        form.addRow(1, new Label("Razão Social:"), new TextField());
-        form.addRow(2, new Label("E-mail:"), new TextField());
-        form.addRow(3, new Label("Telefone:"), new TextField());
+        form.addRow(0, new Label("CNPJ/CPF:"), txtCnpj);
+        form.addRow(1, new Label("Razão Social:"), txtNome);
+        form.addRow(2, new Label("Contato (Tel/Email):"), txtContato);
 
         Button btnSalvar = new Button("Salvar Cadastro");
         btnSalvar.getStyleClass().addAll(Styles.SUCCESS);
-        form.addRow(5, new Label(""), btnSalvar);
+        btnSalvar.setMaxWidth(Double.MAX_VALUE);
+        GridPane.setColumnSpan(btnSalvar, 2);
+        form.addRow(4, btnSalvar);
 
-        VBox painelEsq = new VBox(20, new Label("Novo Cadastro"), form);
-        painelEsq.setPadding(new Insets(20));
+        dao.FornecedorDAO fornecedorDAO = new dao.FornecedorDAO();
 
-        // Tabela
-        TableView<Fornecedor> tabela = new TableView<>();
-        tabela.getStyleClass().add(Styles.STRIPED);
-        tabela.getColumns().addAll(new TableColumn<>("Fornecedor"), new TableColumn<>("Contato"));
-        VBox painelDir = new VBox(10, new Label("Contatos Salvos"), tabela);
-        painelDir.setPadding(new Insets(20));
+        btnSalvar.setOnAction(e -> {
+            try {
+                if (txtNome.getText().isEmpty() || txtCnpj.getText().isEmpty()) {
+                    throw new IllegalArgumentException("Os campos 'Razão Social' e 'CNPJ/CPF' são obrigatórios.");
+                }
 
-        split.getItems().addAll(painelEsq, painelDir);
-        split.setDividerPositions(0.35);
+                Fornecedor f = new Fornecedor();
+                f.setNome(txtNome.getText());
+                f.setCnpjCpf(txtCnpj.getText());
+                f.setContato(txtContato.getText());
 
-        VBox layout = new VBox(20, lblTitulo, split);
-        layout.setPadding(new Insets(40));
-        return layout;
+                fornecedorDAO.salvar(f);
+
+                // Recarrega a tabela da tela de trás magicamente!
+                listaAtual.setAll(fornecedorDAO.listarTodos());
+
+                mostrarAlerta("Fornecedor cadastrado com sucesso!");
+                stageModal.close(); // Fecha a janelinha automaticamente
+
+            } catch (IllegalArgumentException ex) {
+                mostrarErro("Atenção", ex.getMessage());
+            } catch (java.sql.SQLException ex) {
+                if (ex.getMessage().contains("duplicate key")) {
+                    mostrarErro("Erro", "Este CNPJ/CPF já está cadastrado no sistema.");
+                } else {
+                    mostrarErro("Erro", "Falha de banco: " + ex.getMessage());
+                }
+            }
+        });
+
+        VBox layout = new VBox(20, form);
+        layout.setPadding(new Insets(30));
+
+        Scene scene = new Scene(layout, 380, 250);
+        stageModal.setScene(scene);
+        stageModal.setResizable(false);
+        stageModal.showAndWait();
     }
 
     private VBox criarTelaTemporaria(String titulo) {
@@ -588,5 +692,104 @@ public class MainFX extends Application {
         } else {
             return String.format("R$ %.1f milhão", valor / 1_000_000);
         }
+    }
+
+    // =================================================================================
+    // MÁSCARAS DE FORMATAÇÃO (TEMPO REAL)
+    // =================================================================================
+
+    private void aplicarMascaraCnpjCpf(TextField textField) {
+        final boolean[] isUpdating = {false};
+
+        textField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (isUpdating[0]) return;
+            isUpdating[0] = true;
+
+            String apenasNumeros = newValue.replaceAll("[^\\d]", "");
+
+            if (apenasNumeros.length() > 14) {
+                apenasNumeros = apenasNumeros.substring(0, 14);
+            }
+
+            StringBuilder sb = new StringBuilder(apenasNumeros);
+
+            if (apenasNumeros.length() <= 11) {
+                if (sb.length() > 9) sb.insert(9, "-");
+                if (sb.length() > 6) sb.insert(6, ".");
+                if (sb.length() > 3) sb.insert(3, ".");
+            } else {
+                if (sb.length() > 12) sb.insert(12, "-");
+                if (sb.length() > 8) sb.insert(8, "/");
+                if (sb.length() > 5) sb.insert(5, ".");
+                if (sb.length() > 2) sb.insert(2, ".");
+            }
+
+            String mascara = sb.toString();
+
+            // Colocamos TUDO (texto, cursor e destrava) na fila de execução do JavaFX
+            javafx.application.Platform.runLater(() -> {
+                textField.setText(mascara);
+                textField.positionCaret(mascara.length());
+                isUpdating[0] = false;
+            });
+        });
+    }
+
+    private void aplicarMascaraContato(TextField textField) {
+        final boolean[] isUpdating = {false};
+
+        textField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (isUpdating[0]) return;
+
+            if (newValue.matches(".*[a-zA-Z@].*")) return;
+
+            isUpdating[0] = true;
+
+            String apenasNumeros = newValue.replaceAll("[^\\d]", "");
+
+            if (apenasNumeros.length() > 11) {
+                apenasNumeros = apenasNumeros.substring(0, 11);
+            }
+
+            StringBuilder sb = new StringBuilder(apenasNumeros);
+
+            if (apenasNumeros.length() > 2) {
+                sb.insert(2, ") ").insert(0, "(");
+            }
+
+            if (apenasNumeros.length() == 11) {
+                if (sb.length() > 10) sb.insert(10, "-");
+            } else if (apenasNumeros.length() > 6) {
+                if (sb.length() > 9) sb.insert(9, "-");
+            }
+
+            String mascara = sb.toString();
+
+            // Colocamos TUDO na fila de execução do JavaFX
+            javafx.application.Platform.runLater(() -> {
+                textField.setText(mascara);
+                textField.positionCaret(mascara.length());
+                isUpdating[0] = false;
+            });
+        });
+    }
+    // =================================================================================
+    // MÉTODOS UTILITÁRIOS (ALERTAS)
+    // =================================================================================
+
+    private void mostrarAlerta(String mensagem) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Sistema GEST");
+        alert.setHeaderText(null);
+        alert.setContentText(mensagem);
+        alert.showAndWait();
+    }
+
+    private void mostrarErro(String titulo, String mensagem) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(titulo);
+        alert.setHeaderText(null);
+        alert.setContentText(mensagem);
+        alert.showAndWait();
     }
 }

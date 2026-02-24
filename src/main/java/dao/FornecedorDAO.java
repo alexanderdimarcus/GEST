@@ -28,4 +28,31 @@ public class FornecedorDAO {
         }
         return lista;
     }
+
+    public void salvar(Fornecedor f) throws SQLException {
+        String sql = "INSERT INTO fornecedores (nome, cnpj_cpf, contato) VALUES (?, ?, ?)";
+
+        try (Connection conn = ConexaoBD.conectar();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, f.getNome());
+            stmt.setString(2, f.getCnpjCpf());
+            stmt.setString(3, f.getContato());
+
+            stmt.executeUpdate();
+            System.out.println("Fornecedor salvo com sucesso!");
+        }
+    }
+
+    public void excluir(int id) throws SQLException {
+        String sql = "DELETE FROM fornecedores WHERE id = ?";
+        try (Connection conn = ConexaoBD.conectar();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, id);
+            stmt.executeUpdate();
+            System.out.println("Fornecedor excluído com sucesso do banco!");
+        }
+    }
+
 }
