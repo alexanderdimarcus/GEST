@@ -116,24 +116,19 @@ public class MainFX extends Application {
         header.setAlignment(Pos.CENTER_LEFT);
 
         // --- Navegação
-        Button btnDash = criarBotaoMenu("Dashboard");
-        Button btnConsulta = criarBotaoMenu("Consulta de Estoque");
-        Button btnControle = criarBotaoMenu("Movimentação");
+        Button btnDash = criarBotaoMenu("Início");
+        Button btnVendas = criarBotaoMenu("Vendas");
+        Button btnEstoque = criarBotaoMenu("Estoque");
         Button btnFornecedores = criarBotaoMenu("Fornecedores");
         Button btnRelatorios = criarBotaoMenu("Relatórios & Logs");
 
         btnDash.setOnAction(e -> rootLayout.setCenter(criarDashboard()));
-        btnConsulta.setOnAction(e -> rootLayout.setCenter(criarTelaConsulta()));
-
-        // ALTERAÇÃO: Telas redirecionadas temporariamente para "Em Desenvolvimento"
-        btnControle.setOnAction(e -> rootLayout.setCenter(criarTelaTemporaria("Movimentação")));
-        // Original: btnControle.setOnAction(e -> rootLayout.setCenter(criarTelaControle()));
-
+        btnVendas.setOnAction(e -> rootLayout.setCenter(criarTelaVendas()));
+        btnEstoque.setOnAction(e -> rootLayout.setCenter(criarTelaEstoque()));
         btnFornecedores.setOnAction(e -> rootLayout.setCenter(criarTelaFornecedores()));
-
         btnRelatorios.setOnAction(e -> rootLayout.setCenter(criarTelaTemporaria("Relatórios (H11)")));
 
-        VBox botoesLayout = new VBox(2, btnDash, btnConsulta, btnControle, btnFornecedores, btnRelatorios);
+        VBox botoesLayout = new VBox(2, btnDash, btnVendas, btnEstoque, btnFornecedores, btnRelatorios);
 
         // --- STATUS DA CONEXÃO ---
         Region spacer = new Region();
@@ -242,9 +237,7 @@ public class MainFX extends Application {
     // TELA 1: CONSULTA DE ESTOQUE (Busca Avançada)
     // =================================================================================
 
-    private VBox criarTelaConsulta() {
-        Label lblTitulo = new Label("Consulta de Estoque");
-        lblTitulo.getStyleClass().addAll(Styles.TITLE_1);
+    private VBox criarAbaConsulta() {
 
         // 1. CARREGAMENTO DE DADOS (Master Data)
         // Carregamos tudo do banco uma vez para memória para filtrar rápido
@@ -471,8 +464,9 @@ public class MainFX extends Application {
 
         atualizarContador.run(); // Define o valor inicial assim que a tela abre
 
-        VBox layout = new VBox(15, lblTitulo, barraFerramentas, tabela, lblTotal);
-        layout.setPadding(new Insets(40));
+        VBox layout = new VBox(15, barraFerramentas, tabela, lblTotal);
+        layout.setPadding(new Insets(20, 0, 0, 0));
+
         return layout;
     }
 
@@ -639,28 +633,387 @@ public class MainFX extends Application {
     }
 
     // =================================================================================
-    // TELA 2: CONTROLE DE ESTOQUE
+    // TELA EXTRA: FRENTE DE CAIXA / VENDAS (PDV)
     // =================================================================================
+    private VBox criarTelaVendas() {
+        Label lblTitulo = new Label("PDV - Ponto de Venda");
+        lblTitulo.getStyleClass().addAll(Styles.TITLE_1);
 
-    private VBox criarTelaControle() {
-        Label lblTitulo = new Label("Movimentação de Estoque");
+        // Lista que vai guardar os itens do carrinho
+        ObservableList<ItemCarrinho> carrinho = FXCollections.observableArrayList();
+        dao.ProdutoDAO daoProduto = new dao.ProdutoDAO();
+
+        // --- LADO ESQUERDO: Adicionar Produto ---
+        VBox painelEsquerdo = new VBox(15);
+        painelEsquerdo.setPrefWidth(350);
+        painelEsquerdo.setPadding(new Insets(20));
+        painelEsquerdo.setStyle("-fx-background-color: #f6f8fa; -fx-border-color: #d0d7de; -fx-border-radius: 6px;");
+
+        Label lblAdd = new Label("Adicionar Item");
+        lblAdd.getStyleClass().add(Styles.TITLE_3);
+
+        TextField txtCod = new TextField();
+        txtCod.setPromptText("Digite o Cód");
+        TextField txtQtd = new TextField("1"); // Padrão é 1
+        txtQtd.setPromptText("Qtd");
+
+        // Info do produto "bipado"
+        Label lblInfo = new Label("Aguardando produto...");
+        lblInfo.getStyleClass().add(Styles.TEXT_MUTED);
+        lblInfo.setWrapText(true);
+
+        Button btnAdd = new Button("Adicionar ao Carrinho ➕");
+        btnAdd.getStyleClass().addAll(Styles.ACCENT, Styles.LARGE);
+        btnAdd.setMaxWidth(Double.MAX_VALUE);
+
+        painelEsquerdo.getChildren().addAll(lblAdd, new Label("Código do Produto:"), txtCod, new Label("Quantidade:"), txtQtd, btnAdd, lblInfo);
+
+        // --- LADO DIREITO: Tabela (Carrinho) e Total ---
+        VBox painelDireito = new VBox(15);
+        HBox.setHgrow(painelDireito, Priority.ALWAYS); // Cresce para ocupar a tela
+
+        TableView<ItemCarrinho> tabelaCart = new TableView<>();
+        tabelaCart.getStyleClass().addAll(Styles.STRIPED, Styles.BORDERED);
+        tabelaCart.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+        VBox.setVgrow(tabelaCart, Priority.ALWAYS);
+
+        TableColumn<ItemCarrinho, String> colCod = new TableColumn<>("Cód");
+        colCod.setCellValueFactory(new PropertyValueFactory<>("codigo"));
+        colCod.setMaxWidth(80);
+
+        TableColumn<ItemCarrinho, String> colDesc = new TableColumn<>("Descrição");
+        colDesc.setCellValueFactory(new PropertyValueFactory<>("descricao"));
+
+        TableColumn<ItemCarrinho, String> colQtd = new TableColumn<>("Qtd");
+        colQtd.setCellValueFactory(new PropertyValueFactory<>("quantidade"));
+        colQtd.setMaxWidth(80);
+
+        TableColumn<ItemCarrinho, String> colUn = new TableColumn<>("Vlr. Unitário");
+        colUn.setCellValueFactory(new PropertyValueFactory<>("valorUnitarioFormatado"));
+
+        TableColumn<ItemCarrinho, String> colSub = new TableColumn<>("Subtotal");
+        colSub.setCellValueFactory(new PropertyValueFactory<>("subtotalFormatado"));
+
+        tabelaCart.getColumns().addAll(colCod, colDesc, colQtd, colUn, colSub);
+        tabelaCart.setItems(carrinho);
+
+        // Rodapé com Total e Botão Finalizar
+        Label lblTextoTotal = new Label("TOTAL:");
+        lblTextoTotal.getStyleClass().addAll(Styles.TITLE_2, Styles.TEXT_MUTED);
+
+        Label lblTotalValor = new Label("R$ 0,00");
+        lblTotalValor.getStyleClass().add(Styles.TITLE_1);
+        lblTotalValor.setStyle("-fx-font-size: 40px; -fx-text-fill: #1a7f37;"); // Verde grandão
+
+        Button btnFinalizar = new Button("Finalizar Venda");
+        btnFinalizar.getStyleClass().addAll(Styles.SUCCESS, Styles.LARGE);
+        btnFinalizar.setPrefWidth(250);
+        btnFinalizar.setPrefHeight(60);
+        btnFinalizar.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+
+        HBox rodapeTotal = new HBox(20, lblTextoTotal, lblTotalValor, new Region(), btnFinalizar);
+        rodapeTotal.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(rodapeTotal.getChildren().get(2), Priority.ALWAYS); // Espaçador empurra o botão pra direita
+
+        painelDireito.getChildren().addAll(tabelaCart, rodapeTotal);
+
+        // --- LÓGICA DO CARRINHO (A MÁGICA VISUAL) ---
+
+        // Atalho do Enter
+        // Enter no campo de Código: Faz a pré-busca e depois pula para Quantidade
+        txtCod.setOnAction(e -> {
+            try {
+                int cod = Integer.parseInt(txtCod.getText());
+                // Busca rápida do produto
+                Produto pBusca = daoProduto.listarTodos().stream().filter(p -> p.getCodigo() == cod).findFirst().orElse(null);
+
+                if (pBusca != null) {
+                    lblInfo.setText("Produto: " + pBusca.getDescricao() + " | Estoque: " + pBusca.getQntdDisp());
+                    lblInfo.setStyle("-fx-text-fill: #0969da; -fx-font-weight: bold;"); // Azul para pré-visualização
+                    txtQtd.requestFocus(); // Pula para a quantidade
+                } else {
+                    lblInfo.setText("❌ Produto não encontrado!");
+                    lblInfo.setStyle("-fx-text-fill: red;");
+                    txtCod.selectAll(); // Seleciona o texto errado para facilitar apagar
+                }
+            } catch (NumberFormatException ex) {
+                lblInfo.setText("❌ Digite um código válido.");
+                lblInfo.setStyle("-fx-text-fill: red;");
+            }
+        });
+
+        // Enter no campo de Quantidade: "clica" no botão de Adicionar
+        txtQtd.setOnAction(e -> btnAdd.fire());
+
+        // Função mágica para atualizar o R$ grandão sempre que a tabela mudar
+        Runnable atualizarTotal = () -> {
+            double soma = carrinho.stream().mapToDouble(ItemCarrinho::getSubtotal).sum();
+            lblTotalValor.setText(String.format("R$ %.2f", soma));
+        };
+
+        btnAdd.setOnAction(e -> {
+            try {
+                int cod = Integer.parseInt(txtCod.getText());
+                int qtd = Integer.parseInt(txtQtd.getText());
+
+                if (qtd <= 0) throw new NumberFormatException();
+
+                Produto pEncontrado = daoProduto.listarTodos().stream().filter(p -> p.getCodigo() == cod).findFirst().orElse(null);
+
+                if (pEncontrado == null) {
+                    lblInfo.setText("❌ Produto não encontrado!");
+                    lblInfo.setStyle("-fx-text-fill: red;");
+                    return;
+                }
+
+                // Verifica se já tem no carrinho para somar a quantidade em vez de duplicar a linha
+                ItemCarrinho itemExistente = carrinho.stream().filter(i -> i.getCodigo() == cod).findFirst().orElse(null);
+
+                int qtdTotalDesejada = qtd + (itemExistente != null ? itemExistente.getQuantidade() : 0);
+
+                if (qtdTotalDesejada > pEncontrado.getQntdDisp()) {
+                    lblInfo.setText("⚠️ Estoque insuficiente! (Disponível: " + pEncontrado.getQntdDisp() + ")");
+                    lblInfo.setStyle("-fx-text-fill: red;");
+                    return;
+                }
+
+                if (itemExistente != null) {
+                    itemExistente.adicionarQuantidade(qtd);
+                    tabelaCart.refresh(); // Força a tabela a atualizar os números visualmente
+                } else {
+                    carrinho.add(new ItemCarrinho(pEncontrado, qtd));
+                }
+
+                lblInfo.setText("✅ Adicionado: " + pEncontrado.getDescricao());
+                lblInfo.setStyle("-fx-text-fill: green;");
+                txtCod.clear();
+                txtQtd.setText("1");
+                txtCod.requestFocus(); // Foco volta pro código pra bipar o próximo!
+
+                atualizarTotal.run();
+
+            } catch (NumberFormatException ex) {
+                lblInfo.setText("❌ Código e Quantidade devem ser números válidos.");
+                lblInfo.setStyle("-fx-text-fill: red;");
+            }
+        });
+
+        // --- AÇÃO DO BOTÃO FINALIZAR VENDA ---
+        btnFinalizar.setOnAction(e -> {
+            if (carrinho.isEmpty()) {
+                mostrarErro("Carrinho Vazio", "Adicione produtos antes de finalizar a venda.");
+                return;
+            }
+
+            // Exibe janela de confirmação para o vendedor
+            Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION,
+                    "Deseja finalizar a venda no valor total de " + lblTotalValor.getText() + "?",
+                    ButtonType.YES, ButtonType.NO);
+            confirmacao.setHeaderText("Confirmar Venda");
+
+            confirmacao.showAndWait().ifPresent(resposta -> {
+                if (resposta == ButtonType.YES) {
+                    try {
+                        dao.MovimentacaoDAO daoMov = new dao.MovimentacaoDAO();
+                        String usuarioAtual = core.Sessao.getUsuario().getNomeCompleto();
+
+                        // Pega a lista do JavaFX, converte para uma lista padrão do Java e envia para o DAO!
+                        daoMov.registrarVenda(new java.util.ArrayList<>(carrinho), usuarioAtual);
+
+                        mostrarAlerta("Venda finalizada com sucesso!");
+
+                        // Limpa o PDV para o próximo cliente da fila
+                        carrinho.clear();
+                        lblTotalValor.setText("R$ 0,00");
+                        txtCod.clear();
+                        txtQtd.setText("1");
+                        lblInfo.setText("Caixa livre. Aguardando próximo cliente...");
+                        lblInfo.setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
+                        txtCod.requestFocus(); // Foco no código de barras!
+
+                    } catch (java.sql.SQLException ex) {
+                        mostrarErro("Venda Cancelada", ex.getMessage());
+                    }
+                }
+            });
+        });
+
+        HBox split = new HBox(30, painelEsquerdo, painelDireito);
+        VBox layout = new VBox(20, lblTitulo, split);
+        layout.setPadding(new Insets(40));
+        return layout;
+    }
+
+    // =================================================================================
+    // TELA UNIFICADA: ESTOQUE (Consulta + Entradas + Baixas)
+    // =================================================================================
+    private VBox criarTelaEstoque() {
+        Label lblTitulo = new Label("Gestão de Estoque");
         lblTitulo.getStyleClass().addAll(Styles.TITLE_1);
 
         TabPane tabPane = new TabPane();
-        // AtlantaFX deixa as abas nativamente bonitas
         tabPane.getStyleClass().addAll(Styles.DENSE);
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         VBox.setVgrow(tabPane, Priority.ALWAYS);
 
+        // Nossas 3 funcionalidades agora vivem lado a lado de forma super limpa!
+        Tab tabConsulta = new Tab("Consultar e Gerenciar", criarAbaConsulta());
         Tab tabEntrada = new Tab("Entrada em Lote", criarFormularioEntradaLote());
-        Tab tabSaida = new Tab("Saída / Venda", criarFormularioSaida());
+        Tab tabBaixa = new Tab("Baixa de Perdas/Ajustes", criarFormularioBaixa());
 
-        tabPane.getTabs().addAll(tabEntrada, tabSaida);
+        tabPane.getTabs().addAll(tabConsulta, tabEntrada, tabBaixa);
 
         VBox layout = new VBox(20, lblTitulo, tabPane);
         layout.setPadding(new Insets(40));
         return layout;
     }
+
+    // =================================================================================
+    // FORMULÁRIO DE BAIXA DE ESTOQUE (Com Justificativa)
+    // =================================================================================
+    private VBox criarFormularioBaixa() {
+        // --- 1. ÁREA DE BUSCA ---
+        TextField txtCod = new TextField();
+        txtCod.setPromptText("Ex: 101");
+        Button btnBuscar = new Button("Buscar Produto");
+        btnBuscar.getStyleClass().addAll(Styles.ACCENT);
+
+        HBox boxBusca = new HBox(10, new Label("Código do Produto:"), txtCod, btnBuscar);
+        boxBusca.setAlignment(Pos.CENTER_LEFT);
+
+        // --- 2. ÁREA DE INFORMAÇÃO DO PRODUTO (Visual) ---
+        Label lblNomeProduto = new Label("Produto: (Nenhum selecionado)");
+        lblNomeProduto.getStyleClass().add(Styles.TEXT_MUTED);
+        Label lblEstoqueAtual = new Label("Estoque Disponível: -");
+        lblEstoqueAtual.getStyleClass().add(Styles.TEXT_MUTED);
+
+        VBox boxInfo = new VBox(5, lblNomeProduto, lblEstoqueAtual);
+        boxInfo.setPadding(new Insets(10));
+        boxInfo.setStyle("-fx-background-color: #f6f8fa; -fx-border-color: #d0d7de; -fx-border-radius: 4px;");
+
+        // --- 3. ÁREA DE BAIXA (Com o Motivo que você sugeriu!) ---
+        TextField txtQtd = new TextField();
+        txtQtd.setPromptText("Qtd a remover");
+
+        ComboBox<String> cmbMotivo = new ComboBox<>();
+        cmbMotivo.getItems().addAll("Produto Danificado", "Vencimento (Perecível)", "Defeito / Acionamento de Garantia", "Roubo / Furto", "Ajuste de Inventário (Erro de contagem)");
+        cmbMotivo.setPromptText("Selecione o motivo da baixa...");
+        cmbMotivo.setPrefWidth(300);
+
+        TextField txtObservacao = new TextField();
+        txtObservacao.setPromptText("Detalhes extras (Ex: Garantia acionada pelo cliente João)");
+
+        GridPane form = new GridPane();
+        form.setHgap(15);
+        form.setVgap(15);
+        form.addRow(0, new Label("Quantidade:"), txtQtd);
+        form.addRow(1, new Label("Motivo:"), cmbMotivo);
+        form.addRow(2, new Label("Observações:"), txtObservacao);
+
+        Button btnSalvar = new Button("Registrar Baixa no Banco");
+        btnSalvar.getStyleClass().addAll(Styles.DANGER, Styles.LARGE);
+        btnSalvar.setMaxWidth(Double.MAX_VALUE);
+
+        // =================================================================
+        // LÓGICA DE BUSCA E SALVAMENTO
+        // =================================================================
+
+        // Instanciamos os DAOs
+        dao.ProdutoDAO daoProduto = new dao.ProdutoDAO();
+        dao.MovimentacaoDAO daoMov = new dao.MovimentacaoDAO();
+
+        // Variável "invisível" (Array de 1 posição) para o sistema lembrar qual produto está na tela
+        final Produto[] produtoSelecionado = {null};
+
+        // AÇÃO DO BOTÃO BUSCAR
+        txtCod.setOnAction(e -> btnBuscar.fire());
+        btnBuscar.setOnAction(e -> {
+
+            try {
+                int codBusca = Integer.parseInt(txtCod.getText());
+
+                // Busca o produto (reaproveitando a lista completa do DAO para agilidade)
+                Produto pEncontrado = daoProduto.listarTodos().stream()
+                        .filter(p -> p.getCodigo() == codBusca)
+                        .findFirst().orElse(null);
+
+                if (pEncontrado != null) {
+                    produtoSelecionado[0] = pEncontrado;
+                    lblNomeProduto.setText("Produto: " + pEncontrado.getDescricao());
+                    lblNomeProduto.getStyleClass().remove(Styles.TEXT_MUTED); // Tira o tom cinza
+
+                    lblEstoqueAtual.setText("Estoque Disponível: " + pEncontrado.getQntdDisp() + " un.");
+                    // Alerta visual imediato se o estoque já estiver zerado
+                    if(pEncontrado.getQntdDisp() <= 0) {
+                        lblEstoqueAtual.setStyle("-fx-text-fill: #cf222e; -fx-font-weight: bold;"); // Vermelho
+                    } else {
+                        lblEstoqueAtual.setStyle("-fx-text-fill: #1a7f37; -fx-font-weight: bold;"); // Verde
+                    }
+                    txtQtd.requestFocus();
+                } else {
+                    produtoSelecionado[0] = null;
+                    lblNomeProduto.setText("Produto não encontrado no sistema!");
+                    lblNomeProduto.setStyle("-fx-text-fill: #cf222e;");
+                    lblEstoqueAtual.setText("Estoque Disponível: -");
+                }
+            } catch (NumberFormatException ex) {
+                mostrarErro("Formato Inválido", "Por favor, digite um código numérico válido.");
+            }
+        });
+
+        // AÇÃO DO BOTÃO REGISTRAR BAIXA
+        btnSalvar.setOnAction(e -> {
+            // Travas de segurança visuais
+            if (produtoSelecionado[0] == null) {
+                mostrarErro("Atenção", "Primeiro, busque e selecione um produto válido clicando em 'Buscar'.");
+                return;
+            }
+            if (txtQtd.getText().isEmpty() || cmbMotivo.getValue() == null) {
+                mostrarErro("Atenção", "Os campos 'Quantidade' e 'Motivo' são obrigatórios!");
+                return;
+            }
+
+            try {
+                int qtdRemover = Integer.parseInt(txtQtd.getText());
+                if (qtdRemover <= 0) throw new NumberFormatException();
+
+                String motivo = cmbMotivo.getValue();
+                String obs = txtObservacao.getText();
+
+                // Pegamos magicamente o nome de quem logou no sistema (História 11)
+                String usuarioResponsavel = core.Sessao.getUsuario().getNomeCompleto();
+
+                // Dispara a Transação de Segurança no Banco de Dados
+                daoMov.registrarBaixa(produtoSelecionado[0].getCodigo(), qtdRemover, motivo, obs, usuarioResponsavel);
+
+                mostrarAlerta("Baixa de estoque registrada com sucesso no banco de dados!");
+
+                // Limpa a tela para a próxima operação
+                txtCod.clear();
+                txtQtd.clear();
+                cmbMotivo.setValue(null);
+                txtObservacao.clear();
+                lblNomeProduto.setText("Produto: (Nenhum selecionado)");
+                lblNomeProduto.setStyle("");
+                lblEstoqueAtual.setText("Estoque Disponível: -");
+                lblEstoqueAtual.setStyle("");
+                produtoSelecionado[0] = null;
+
+            } catch (NumberFormatException ex) {
+                mostrarErro("Erro de Formato", "A quantidade a remover deve ser um número inteiro e maior que zero.");
+            } catch (java.sql.SQLException ex) {
+                // Aqui o banco avisa se tentarmos tirar mais do que tem (a trava G7-53!)
+                mostrarErro("Operação Bloqueada pelo Banco", ex.getMessage());
+            }
+        });
+
+        VBox layout = new VBox(20, boxBusca, boxInfo, form, btnSalvar);
+        layout.setPadding(new Insets(20, 0, 0, 0));
+        layout.setMaxWidth(600);
+
+        return layout;
+    }
+
 
     private VBox criarFormularioEntradaLote() {
         TextField txtCod = new TextField();
@@ -686,31 +1039,56 @@ public class MainFX extends Application {
         btnSalvarLote.getStyleClass().addAll(Styles.SUCCESS, Styles.LARGE); // Botão grande e verde
         btnSalvarLote.setMaxWidth(Double.MAX_VALUE);
 
-        VBox layout = new VBox(15, new Label("Bipe ou digite os itens recebidos:"), formAdd, tabelaLote, btnSalvarLote);
+        VBox layout = new VBox(15, new Label("Digite os itens recebidos:"), formAdd, tabelaLote, btnSalvarLote);
         layout.setPadding(new Insets(20, 0, 0, 0));
         return layout;
     }
 
     private VBox criarFormularioSaida() {
+        // --- 1. ÁREA DE BUSCA ---
+        TextField txtCod = new TextField();
+        txtCod.setPromptText("Ex: 101");
+        Button btnBuscar = new Button("Buscar Produto");
+        btnBuscar.getStyleClass().addAll(Styles.ACCENT);
+
+        HBox boxBusca = new HBox(10, new Label("Código do Produto:"), txtCod, btnBuscar);
+        boxBusca.setAlignment(Pos.CENTER_LEFT);
+
+        // --- 2. ÁREA DE INFORMAÇÃO DO PRODUTO (Visual) ---
+        Label lblNomeProduto = new Label("Produto: (Nenhum selecionado)");
+        lblNomeProduto.getStyleClass().add(Styles.TEXT_MUTED);
+        Label lblEstoqueAtual = new Label("Estoque Disponível: -");
+        lblEstoqueAtual.getStyleClass().add(Styles.TEXT_MUTED);
+
+        VBox boxInfo = new VBox(5, lblNomeProduto, lblEstoqueAtual);
+        boxInfo.setPadding(new Insets(10));
+        boxInfo.setStyle("-fx-background-color: #f6f8fa; -fx-border-color: #d0d7de; -fx-border-radius: 4px;");
+
+        // --- 3. ÁREA DE SAÍDA / VENDA ---
+        TextField txtQtd = new TextField();
+        txtQtd.setPromptText("Quantidade a remover");
+        TextField txtDestino = new TextField();
+        txtDestino.setPromptText("Ex: Venda #123 ou Cliente X");
+
         GridPane form = new GridPane();
         form.setHgap(15);
         form.setVgap(15);
-        form.setPadding(new Insets(20, 0, 0, 0));
-
-        TextField txtCod = new TextField();
-        TextField txtQtd = new TextField();
-        TextField txtDestino = new TextField();
-        txtDestino.setPromptText("Ex: Venda #123");
+        form.addRow(0, new Label("Quantidade:"), txtQtd);
+        form.addRow(1, new Label("Documento/Destino:"), txtDestino);
 
         Button btnSalvar = new Button("Confirmar Saída");
-        btnSalvar.getStyleClass().addAll(Styles.DANGER, Styles.LARGE); // Vermelho/Laranja para saídas
+        btnSalvar.getStyleClass().addAll(Styles.DANGER, Styles.LARGE); // Vermelho para indicar "saída"
+        btnSalvar.setMaxWidth(Double.MAX_VALUE);
 
-        form.addRow(0, new Label("Cód. Produto:"), txtCod);
-        form.addRow(1, new Label("Quantidade:"), txtQtd);
-        form.addRow(2, new Label("Documento:"), txtDestino);
-        form.addRow(4, new Label(""), btnSalvar);
+        // Deixando o evento vazio por enquanto, faremos a lógica na Parte 2!
+        btnBuscar.setOnAction(e -> mostrarAlerta("Lógica de busca virá a seguir!"));
+        btnSalvar.setOnAction(e -> mostrarAlerta("Lógica de baixa no estoque virá a seguir!"));
 
-        return new VBox(form);
+        VBox layout = new VBox(20, boxBusca, boxInfo, form, btnSalvar);
+        layout.setPadding(new Insets(20, 0, 0, 0));
+        layout.setMaxWidth(500); // Mantém o formulário com um tamanho agradável na tela
+
+        return layout;
     }
 
     // =================================================================================
@@ -745,6 +1123,15 @@ public class MainFX extends Application {
         tabela.setItems(listaFornecedores);
 
         // --- BOTÕES DE AÇÃO ---
+
+        // NOVO BOTÃO DE ATUALIZAR
+        Button btnAtualizar = new Button("Atualizar Lista");
+        btnAtualizar.getStyleClass().addAll(Styles.BUTTON_OUTLINED, Styles.LARGE);
+        btnAtualizar.setOnAction(e -> {
+            // Vai no banco, busca tudo de novo e atualiza a lista da tela na mesma hora!
+            listaFornecedores.setAll(fornecedorDAO.listarTodos());
+        });
+
         Button btnNovo = new Button("Cadastrar Fornecedor");
         btnNovo.getStyleClass().addAll(Styles.SUCCESS, Styles.LARGE);
         // Chama a nossa nova janela (modal), passando a lista para ela se auto-atualizar
@@ -779,8 +1166,9 @@ public class MainFX extends Application {
             });
         });
 
-        HBox barraBotoes = new HBox(15, btnExcluir, new Region(), btnNovo);
-        HBox.setHgrow(barraBotoes.getChildren().get(1), Priority.ALWAYS); // Joga um botão pra cada lado
+        // Colocamos o btnAtualizar ao lado do btnExcluir
+        HBox barraBotoes = new HBox(15, btnAtualizar, btnExcluir, new Region(), btnNovo);
+        HBox.setHgrow(barraBotoes.getChildren().get(2), Priority.ALWAYS); // O espaçador agora é o 3º item (índice 2)
         barraBotoes.setAlignment(Pos.CENTER);
 
         VBox layout = new VBox(20, lblTitulo, tabela, barraBotoes);
