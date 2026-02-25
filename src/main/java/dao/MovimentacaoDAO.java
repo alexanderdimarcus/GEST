@@ -152,4 +152,34 @@ public class MovimentacaoDAO {
             }
         }
     }
+    // Metodo para buscar o histórico de alterações (Logs)
+    public java.util.List<core.LogMovimentacao> listarHistorico() {
+        java.util.List<core.LogMovimentacao> lista = new java.util.ArrayList<>();
+
+        // Puxa do mais recente para o mais antigo (ORDER BY id DESC)
+        String sql = "SELECT * FROM historico_movimentacoes ORDER BY id DESC";
+
+        try (Connection conn = ConexaoBD.conectar();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             java.sql.ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                core.LogMovimentacao log = new core.LogMovimentacao(
+                        rs.getInt("id"),
+                        rs.getInt("produto_codigo"),
+                        rs.getString("tipo_movimentacao"),
+                        rs.getInt("quantidade"),
+                        rs.getString("motivo"),
+                        rs.getString("observacao"),
+                        rs.getString("usuario"),
+                        rs.getTimestamp("data_hora")
+                );
+                lista.add(log);
+            }
+        } catch (SQLException e) {
+            System.err.println("Erro ao buscar histórico: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return lista;
+    }
 }
