@@ -1016,30 +1016,192 @@ public class MainFX extends Application {
 
 
     private VBox criarFormularioEntradaLote() {
+        // --- 1. LISTA TEMPORÁRIA (Subtarefa G7-61) ---
+        // Reaproveitamos a classe ItemCarrinho para guardar o "Produto + Qtd" na memória
+        ObservableList<core.ItemCarrinho> listaLote = FXCollections.observableArrayList();
+        dao.ProdutoDAO daoProduto = new dao.ProdutoDAO();
+
+        // --- 2. ÁREA DE INPUT ---
         TextField txtCod = new TextField();
         txtCod.setPromptText("Cód. Produto");
         TextField txtQtd = new TextField();
-        txtQtd.setPromptText("Qtd");
+        txtQtd.setPromptText("Qtd Recebida");
 
-        Button btnAdd = new Button("Adicionar");
+        Label lblInfo = new Label("Aguardando produto...");
+        lblInfo.getStyleClass().add(Styles.TEXT_MUTED);
+
+        Button btnAdd = new Button("Adicionar à Lista");
         btnAdd.getStyleClass().addAll(Styles.ACCENT);
 
+        // Mantemos o botão de Novo Produto caso chegue algo inédito na nota fiscal
         Button btnNovo = new Button("Cadastrar Novo Produto");
-        btnNovo.getStyleClass().addAll(Styles.WARNING, Styles.BUTTON_OUTLINED); // Amarelo para chamar atenção sutil
+        btnNovo.getStyleClass().addAll(Styles.WARNING, Styles.BUTTON_OUTLINED);
+        // Deixamos a ação dele vazia por enquanto, podemos ligar à tela de cadastro depois
 
-        HBox formAdd = new HBox(10, txtCod, txtQtd, btnAdd, new Region(), btnNovo);
-        HBox.setHgrow(formAdd.getChildren().get(3), Priority.ALWAYS);
+        HBox formAdd = new HBox(10, txtCod, txtQtd, btnAdd, lblInfo, new Region(), btnNovo);
+        formAdd.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(formAdd.getChildren().get(5), Priority.ALWAYS); // Empurra o btnNovo pro canto direito
 
-        TableView<Produto> tabelaLote = new TableView<>();
-        tabelaLote.getStyleClass().add(Styles.BORDERED);
-        tabelaLote.getColumns().addAll(new TableColumn<>("Produto"), new TableColumn<>("Qtd"));
+        // --- 3. TABELA (Subtarefa G7-62) ---
+        TableView<core.ItemCarrinho> tabelaLote = new TableView<>();
+        tabelaLote.getStyleClass().addAll(Styles.STRIPED, Styles.BORDERED);
+        tabelaLote.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+        tabelaLote.setEditable(true); // <--- MÁGICA 1: Libera a tabela para edição!
         VBox.setVgrow(tabelaLote, Priority.ALWAYS);
 
+        TableColumn<core.ItemCarrinho, String> colCod = new TableColumn<>("Cód");
+        colCod.setCellValueFactory(new PropertyValueFactory<>("codigo"));
+        colCod.setMaxWidth(100);
+
+        TableColumn<core.ItemCarrinho, String> colDesc = new TableColumn<>("Descrição");
+        colDesc.setCellValueFactory(new PropertyValueFactory<>("descricao"));
+
+        // Coluna de Quantidade Editável
+        TableColumn<core.ItemCarrinho, Integer> colQtd = new TableColumn<>("Qtd a Adicionar (2 cliques para editar)");
+        colQtd.setCellValueFactory(new PropertyValueFactory<>("quantidade"));
+        colQtd.setMaxWidth(250);
+
+        // Ensina a coluna a virar uma "caixinha de texto" quando clicada
+        colQtd.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new javafx.util.converter.IntegerStringConverter()));
+
+        // O que acontece quando o usuário aperta Enter após editar:
+        colQtd.setOnEditCommit(event -> {
+            core.ItemCarrinho item = event.getRowValue();
+            int novaQtd = event.getNewValue();
+
+            if (novaQtd > 0) {
+                item.setQuantidade(novaQtd); // Salva a nova quantidade
+            } else {
+                tabelaLote.refresh(); // Desfaz visualmente se ele digitar 0
+                mostrarErro("Atenção", "A quantidade deve ser maior que zero. Para remover o item, clique no botão ❌.");
+            }
+        });
+
+        // <--- MÁGICA 2: COLUNA COM O BOTÃO DE EXCLUIR --->
+        TableColumn<core.ItemCarrinho, Void> colAcao = new TableColumn<>("Remover");
+        colAcao.setMaxWidth(100);
+        colAcao.setCellFactory(param -> new TableCell<>() {
+            private final Button btnExcluir = new Button("❌");
+
+            {
+                // Deixa o botão com cara de "perigo" e sem fundo
+                btnExcluir.getStyleClass().addAll(Styles.DANGER, Styles.FLAT);
+                btnExcluir.setOnAction(event -> {
+                    core.ItemCarrinho item = getTableView().getItems().get(getIndex());
+                    listaLote.remove(item); // Remove da lista instantaneamente!
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    setGraphic(btnExcluir);
+                    setAlignment(Pos.CENTER);
+                }
+            }
+        });
+
+        tabelaLote.getColumns().addAll(colCod, colDesc, colQtd, colAcao);
+        tabelaLote.setItems(listaLote);
+
         Button btnSalvarLote = new Button("Processar Lote de Entrada");
-        btnSalvarLote.getStyleClass().addAll(Styles.SUCCESS, Styles.LARGE); // Botão grande e verde
+        btnSalvarLote.getStyleClass().addAll(Styles.SUCCESS, Styles.LARGE);
         btnSalvarLote.setMaxWidth(Double.MAX_VALUE);
 
-        VBox layout = new VBox(15, new Label("Digite os itens recebidos:"), formAdd, tabelaLote, btnSalvarLote);
+        // --- 4. LÓGICA DE ADICIONAR NA LISTA ---
+
+        // Atalhos de UX (Enter para pular campo e adicionar)
+        txtCod.setOnAction(e -> txtQtd.requestFocus());
+        txtQtd.setOnAction(e -> btnAdd.fire());
+
+        btnAdd.setOnAction(e -> {
+            try {
+                int cod = Integer.parseInt(txtCod.getText());
+                int qtd = Integer.parseInt(txtQtd.getText());
+
+                if (qtd <= 0) throw new NumberFormatException();
+
+                // Busca o produto no banco
+                core.Produto pEncontrado = daoProduto.listarTodos().stream()
+                        .filter(p -> p.getCodigo() == cod)
+                        .findFirst().orElse(null);
+
+                if (pEncontrado == null) {
+                    lblInfo.setText("❌ Produto não encontrado!");
+                    lblInfo.setStyle("-fx-text-fill: red;");
+                    txtCod.requestFocus();
+                    txtCod.selectAll();
+                    return;
+                }
+
+                // Verifica se já está na lista para apenas somar (evita linhas duplicadas)
+                core.ItemCarrinho itemExistente = listaLote.stream()
+                        .filter(i -> i.getCodigo() == cod)
+                        .findFirst().orElse(null);
+
+                if (itemExistente != null) {
+                    itemExistente.adicionarQuantidade(qtd);
+                    tabelaLote.refresh(); // Atualiza a tela
+                } else {
+                    listaLote.add(new core.ItemCarrinho(pEncontrado, qtd));
+                }
+
+                lblInfo.setText("✅ " + pEncontrado.getDescricao() + " (" + qtd + "x) na lista.");
+                lblInfo.setStyle("-fx-text-fill: green;");
+                txtCod.clear();
+                txtQtd.clear();
+                txtCod.requestFocus(); // Volta o cursor para o próximo bipe!
+
+            } catch (NumberFormatException ex) {
+                lblInfo.setText("❌ Código e Quantidade inválidos.");
+                lblInfo.setStyle("-fx-text-fill: red;");
+                txtCod.requestFocus();
+                txtCod.selectAll();
+            }
+        });
+
+        // --- 5. AÇÃO DO BOTÃO SALVAR LOTE NO BANCO ---
+        btnSalvarLote.setOnAction(e -> {
+            if (listaLote.isEmpty()) {
+                mostrarErro("Lista Vazia", "Adicione pelo menos um produto na lista antes de processar a entrada.");
+                return;
+            }
+
+            // Pede confirmação para evitar cliques acidentais
+            Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION,
+                    "Deseja confirmar a entrada destes " + listaLote.size() + " itens no estoque?",
+                    ButtonType.YES, ButtonType.NO);
+            confirmacao.setHeaderText("Confirmar Entrada em Lote");
+
+            confirmacao.showAndWait().ifPresent(resposta -> {
+                if (resposta == ButtonType.YES) {
+                    try {
+                        dao.MovimentacaoDAO daoMov = new dao.MovimentacaoDAO();
+                        String usuarioAtual = core.Sessao.getUsuario().getNomeCompleto();
+
+                        // Envia a lista toda para o banco
+                        daoMov.registrarEntradaLote(new java.util.ArrayList<>(listaLote), usuarioAtual);
+
+                        mostrarAlerta("Lote processado e estoque atualizado com sucesso!");
+
+                        // Limpa a tela para a próxima carreta de produtos
+                        listaLote.clear();
+                        txtCod.clear();
+                        txtQtd.clear();
+                        lblInfo.setText("Lote finalizado. Aguardando novos itens...");
+                        lblInfo.setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
+                        txtCod.requestFocus();
+
+                    } catch (java.sql.SQLException ex) {
+                        mostrarErro("Erro ao processar lote no banco", ex.getMessage());
+                    }
+                }
+            });
+        });
+        VBox layout = new VBox(15, new Label("Bipe ou digite os itens recebidos na nota fiscal:"), formAdd, tabelaLote, btnSalvarLote);
         layout.setPadding(new Insets(20, 0, 0, 0));
         return layout;
     }

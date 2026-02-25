@@ -110,4 +110,46 @@ public class MovimentacaoDAO {
             }
         }
     }
+
+    // Metodo para registrar ENTRADA de múltiplos itens (Lote/Nota Fiscal)
+    public void registrarEntradaLote(java.util.List<core.ItemCarrinho> itens, String nomeUsuario) throws SQLException {
+
+        // Na entrada, nós SOMAMOS (+) e não precisamos checar se tem estoque suficiente
+        String sqlAtualizarEstoque = "UPDATE produtos SET quantidade = quantidade + ? WHERE codigo = ?";
+
+        String sqlInserirHistorico = "INSERT INTO historico_movimentacoes (produto_codigo, tipo_movimentacao, quantidade, motivo, observacao, usuario, data_hora) VALUES (?, 'ENTRADA', ?, 'Entrada em Lote', 'Reposição de estoque / Recebimento', ?, ?)";
+
+        try (Connection conn = ConexaoBD.conectar()) {
+            conn.setAutoCommit(false); // Inicia a Transação
+
+            try (PreparedStatement stmtEstoque = conn.prepareStatement(sqlAtualizarEstoque);
+                 PreparedStatement stmtHistorico = conn.prepareStatement(sqlInserirHistorico)) {
+
+                for (core.ItemCarrinho item : itens) {
+
+                    // 1. Adiciona a quantidade no estoque
+                    stmtEstoque.setInt(1, item.getQuantidade());
+                    stmtEstoque.setInt(2, item.getCodigo());
+                    stmtEstoque.executeUpdate();
+
+                    // 2. Salva o registro no histórico
+                    stmtHistorico.setInt(1, item.getCodigo());
+                    stmtHistorico.setInt(2, item.getQuantidade());
+                    stmtHistorico.setString(3, nomeUsuario);
+                    stmtHistorico.setTimestamp(4, java.sql.Timestamp.valueOf(java.time.LocalDateTime.now()));
+
+                    stmtHistorico.executeUpdate();
+                }
+
+                conn.commit(); // Efetiva a gravação de todos os itens!
+                System.out.println("Entrada em lote finalizada! " + itens.size() + " itens adicionados.");
+
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        }
+    }
 }

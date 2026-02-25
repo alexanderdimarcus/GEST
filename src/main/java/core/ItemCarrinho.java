@@ -33,4 +33,9 @@ public class ItemCarrinho {
         this.quantidade += qtd;
         this.subtotal = this.produto.getValorUnitVenda() * this.quantidade;
     }
+    // Novo metodo para permitir a edição direta na tabela
+    public void setQuantidade(int qtd) {
+        this.quantidade = qtd;
+        this.subtotal = this.produto.getValorUnitVenda() * this.quantidade;
+    }
 }
