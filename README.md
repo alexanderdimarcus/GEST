@@ -57,39 +57,39 @@ Esta seção apresenta os requisitos funcionais e não-funcionais do sistema.
 
 **História 4 — Criar tela para o cadastro de fornecedores**  
 *Como gerente, quero um formulário gráfico para cadastrar fornecedores, para manter um registro organizado.*  
-**Status:** 🕒 
+**Status:** ✅ 
 
 **História 5 — Criar tela para o cadastro de produtos**  
 *Como estoquista, quero uma tela para cadastrar novos produtos, para inserir novos itens no catálogo do sistema.*  
-**Status:** 🕒 
+**Status:** ✅ 
 
 **História 6 — Criar tela de movimentação de saída de estoque**  
 *Como vendedor, quero uma tela para buscar um produto e lançar saídas, para atualizar o saldo do estoque em tempo real conforme as vendas acontecem.*  
-**Status:** 🕒 
+**Status:** ✅ 
 
 **História 7 — Criar listagem de contatos de fornecedores**  
 *Como gerente, quero ver uma lista com todos os fornecedores e seus contatos, para facilitar a comunicação e consulta de dados quando necessário.*  
-**Status:** 🕒 
+**Status:** ✅ 
 
 **História 8 — Criar tabela de listagem de produtos**  
 *Como estoquista, quero ver uma tabela com todos os produtos cadastrados, para conferir rapidamente o inventário disponível e suas características.*  
-**Status:** 🕒 
+**Status:** ✅ 
 
 **História 9 — Criar lançamento de itens em lote**  
 *Como estoquista, quero lançar a entrada de múltiplos itens de uma só vez na mesma operação, para agilizar o processo de reposição.*  
-**Status:** 🕒 
+**Status:** ✅ 
 
 **História 10 — Criar campos dinâmicos por tipo de produto**  
 *Como estoquista, quero uma tela que adapte os campos visíveis (ex: mostrar “Validade” apenas para perecíveis), para preencher apenas as informações relevantes para cada tipo de produto.*  
-**Status:** 🕒 
+**Status:** ✅ 
 
 **História 11 — Criar registro de logs de alterações**  
 *Como administrador, quero que o sistema registre no banco quem realizou cada alteração importante, para ter rastreabilidade e controle sobre as ações dos usuários.*  
-**Status:** 🕒 
+**Status:** ✅ 
 
 **História 12 — Criar alertas visuais de situação crítica dos produtos**  
 *Como estoquista, quero visualizar um destaque visual para produtos em situação crítica (estoque baixo ou vencimento próximo), para priorizar a reposição ou promoção desses itens.*  
-**Status:** 🕒 
+**Status:** ✅ 
 
 **História 13 — Criar dashboard com indicadores**  
 *Como dono da loja, quero uma tela inicial com indicadores visuais sobre a saúde do negócio, para obter uma visão rápida dos principais dados do sistema.*  
