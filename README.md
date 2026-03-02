@@ -93,7 +93,7 @@ Esta seção apresenta os requisitos funcionais e não-funcionais do sistema.
 
 **História 13 — Criar dashboard com indicadores**  
 *Como dono da loja, quero uma tela inicial com indicadores visuais sobre a saúde do negócio, para obter uma visão rápida dos principais dados do sistema.*  
-**Status:** 🕒 
+**Status:** ✅ 
 
 **História 14 — Exportação de dados para arquivo**  
 *Como gerente, quero exportar a lista de produtos para um arquivo externo (ex: .csv), para realizar conferências físicas ou envio de relatórios.*  
