@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 
 public class MovimentacaoDAO {
 
-    // Metodo para registrar uma baixa/perda de estoque com segurança
+    // Metodo para registrar uma baixa/perda de estoque
     public void registrarBaixa(int codigoProduto, int quantidadeRemover, String motivo, String observacao, String nomeUsuario) throws SQLException {
 
         // Query 1: Tira do estoque
@@ -49,7 +49,7 @@ public class MovimentacaoDAO {
 
                 // 3. EFETIVA A TRANSAÇÃO
                 conn.commit();
-                System.out.println("Baixa e Histórico registrados com sucesso com horário local!");
+                System.out.println("Baixa e Histórico registrados com sucesso!");
 
             } catch (SQLException e) {
                 conn.rollback();
@@ -59,7 +59,7 @@ public class MovimentacaoDAO {
             }
         }
     }
-    // Metodo para registrar uma VENDA (Múltiplos itens de uma vez com segurança transacional)
+    // Metodo para registrar uma VENDA
     public void registrarVenda(java.util.List<core.ItemCarrinho> itens, String nomeUsuario) throws SQLException {
 
         String sqlAtualizarEstoque = "UPDATE produtos SET quantidade = quantidade - ? WHERE codigo = ? AND quantidade >= ?";
@@ -73,7 +73,6 @@ public class MovimentacaoDAO {
             try (PreparedStatement stmtEstoque = conn.prepareStatement(sqlAtualizarEstoque);
                  PreparedStatement stmtHistorico = conn.prepareStatement(sqlInserirHistorico)) {
 
-                // Percorre cada item do carrinho de compras
                 for (core.ItemCarrinho item : itens) {
 
                     // 1. Tenta tirar do estoque
@@ -103,15 +102,15 @@ public class MovimentacaoDAO {
                 System.out.println("Venda finalizada! " + itens.size() + " itens processados com sucesso.");
 
             } catch (SQLException e) {
-                conn.rollback(); // Desfaz tudo em caso de erro
+                conn.rollback();
                 throw e;
             } finally {
-                conn.setAutoCommit(true); // Devolve o banco ao estado normal
+                conn.setAutoCommit(true);
             }
         }
     }
 
-    // Metodo para registrar ENTRADA de múltiplos itens (Lote/Nota Fiscal)
+    // Metodo para registrar ENTRADA de múltiplos itens
     public void registrarEntradaLote(java.util.List<core.ItemCarrinho> itens, String nomeUsuario) throws SQLException {
 
         // Na entrada, nós SOMAMOS (+) e não precisamos checar se tem estoque suficiente
@@ -120,8 +119,7 @@ public class MovimentacaoDAO {
         String sqlInserirHistorico = "INSERT INTO historico_movimentacoes (produto_codigo, tipo_movimentacao, quantidade, motivo, observacao, usuario, data_hora) VALUES (?, 'ENTRADA', ?, 'Entrada em Lote', 'Reposição de estoque / Recebimento', ?, ?)";
 
         try (Connection conn = ConexaoBD.conectar()) {
-            conn.setAutoCommit(false); // Inicia a Transação
-
+            conn.setAutoCommit(false);
             try (PreparedStatement stmtEstoque = conn.prepareStatement(sqlAtualizarEstoque);
                  PreparedStatement stmtHistorico = conn.prepareStatement(sqlInserirHistorico)) {
 
@@ -142,7 +140,7 @@ public class MovimentacaoDAO {
                 }
 
                 conn.commit(); // Efetiva a gravação de todos os itens!
-                System.out.println("Entrada em lote finalizada! " + itens.size() + " itens adicionados.");
+                System.out.println("Entrada finalizada! " + itens.size() + " itens adicionados.");
 
             } catch (SQLException e) {
                 conn.rollback();

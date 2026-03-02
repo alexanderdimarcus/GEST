@@ -36,12 +36,10 @@ public class LoginFX extends Application {
 
         txtUsuario = new TextField();
         txtUsuario.setPromptText("Digite seu usuário ou e-mail");
-
-        // ALTERAÇÃO: Enter no campo usuário apenas muda o foco para a senha
         txtUsuario.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ENTER) {
                 txtSenha.requestFocus();
-                event.consume(); // Impede que o evento suba para o root e dispare o login
+                event.consume();
             }
         });
 
@@ -50,37 +48,28 @@ public class LoginFX extends Application {
 
         Button btnEntrar = new Button("Entrar");
         btnEntrar.getStyleClass().addAll(Styles.ACCENT, Styles.LARGE);
-        btnEntrar.setMaxWidth(Double.MAX_VALUE); // Faz o botão preencher a largura
+        btnEntrar.setMaxWidth(Double.MAX_VALUE);
         btnEntrar.setOnAction(e -> tentarLogin(stage));
 
         lblErro = new Label("Usuário ou senha incorretos.");
-        lblErro.getStyleClass().addAll(Styles.DANGER); // Texto vermelho do AtlantaFX
-        lblErro.setVisible(false); // Escondido por padrão
+        lblErro.getStyleClass().addAll(Styles.DANGER);
+        lblErro.setVisible(false);
 
-        // --- Layout do Card ---
-        VBox formCard = new VBox(15, lblLogo, lblSub, new Label("Usuário:"), txtUsuario, new Label("Senha:"), txtSenha, lblErro, btnEntrar);
-        formCard.setPadding(new Insets(40));
-        formCard.setAlignment(Pos.CENTER_LEFT);
-        formCard.setMaxWidth(350);
-        formCard.getStyleClass().addAll("card", Styles.ELEVATED_2);
-        formCard.setStyle("-fx-background-color: white; -fx-background-radius: 8px;");
-
-        // --- Fundo da Tela ---
-        StackPane root = new StackPane(formCard);
-        root.setStyle("-fx-background-color: #f6f8fa;"); // Fundo cinza claro para destacar o card branco
-        root.setPadding(new Insets(20));
-
-        // Permite logar apertando "Enter" (Global - funcionará para o campo Senha)
+        // --- Layout Principal ---
+        VBox root = new VBox(15, lblLogo, lblSub, new Label("Usuário:"), txtUsuario, new Label("Senha:"), txtSenha, lblErro, btnEntrar);
+        root.setPadding(new Insets(40));
+        root.setAlignment(Pos.CENTER_LEFT);
+        root.setStyle("-fx-background-color: #ffffff;");
         root.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ENTER) {
                 tentarLogin(stage);
             }
         });
 
-        Scene scene = new Scene(root, 500, 550);
+        Scene scene = new Scene(root, 400, 480);
         stage.setTitle("GEST - Login");
         stage.setScene(scene);
-        stage.setResizable(false); // Tela de login com tamanho fixo
+        stage.setResizable(false);
         stage.show();
     }
 
@@ -101,7 +90,7 @@ public class LoginFX extends Application {
         Usuario u = dao.autenticar(user, pass);
 
         if (u != null) {
-            Sessao.login(u);          // <-- AQUI
+            Sessao.login(u);
             abrirTelaPrincipal(stageLogin);
         } else {
             lblErro.setText("Usuário ou senha incorretos.");
@@ -112,14 +101,9 @@ public class LoginFX extends Application {
 
     private void abrirTelaPrincipal(Stage stageLogin) {
         try {
-            // Instancia a sua MainFX
             MainFX telaPrincipal = new MainFX();
-
-            // Cria um novo Stage (Janela) para o sistema completo
             Stage stageMain = new Stage();
             telaPrincipal.start(stageMain);
-
-            // Fecha a janelinha de Login
             stageLogin.close();
 
         } catch (Exception e) {

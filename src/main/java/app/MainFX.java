@@ -53,49 +53,39 @@ public class MainFX extends Application {
     // =================================================================================
     // MENU LATERAL (AtlantaFX Styled)
     // =================================================================================
-    private VBox criarMenuLateral() {
+    private ScrollPane criarMenuLateral() {
         VBox sidebar = new VBox();
+        sidebar.setMinWidth(260); // <-- MÁGICA 1: Nunca amassa!
         sidebar.setPrefWidth(260);
-
-        // Ajuste sutil na cor de fundo para destacar mais a logo
-        sidebar.setStyle("-fx-background-color: #ffffff; -fx-border-color: #d0d7de; -fx-border-width: 0 1 0 0;");
+        sidebar.setStyle("-fx-background-color: #ffffff;"); // Fundo branco limpo
 
         // 1. LOGO REFINADA
         ImageView logoView = new ImageView();
         try {
-            // Tenta carregar. Se falhar, não quebra o app.
             java.io.InputStream is = getClass().getResourceAsStream("/logoG.png");
-            if (is == null) is = getClass().getResourceAsStream("/images/logoG.png"); // Tenta subpasta
-
+            if (is == null) is = getClass().getResourceAsStream("/images/logoG.png");
             if (is != null) {
                 logoView.setImage(new Image(is));
-                // Aumentei um pouco para preencher melhor
                 logoView.setFitWidth(160);
                 logoView.setPreserveRatio(true);
-                // TRUQUE DE QUALIDADE: Suaviza a imagem
                 logoView.setSmooth(true);
                 logoView.setCache(true);
             }
-        } catch (Exception e) {
-            /* Ignora erro silenciosamente ou usa System.out */
-        }
+        } catch (Exception ignored) {}
 
-        // Container para centralizar a logo se quiser
         HBox logoContainer = new HBox(logoView);
         logoContainer.setAlignment(Pos.CENTER_LEFT);
         logoContainer.setPadding(new Insets(0, 0, 10, 0));
 
         // 2. INFORMAÇÕES DO USUÁRIO
-        Label lblUser = new Label(Sessao.getUsuario().getNomeCompleto()); // Usa Nome Completo é mais formal
+        Label lblUser = new Label(Sessao.getUsuario().getNomeCompleto());
         lblUser.getStyleClass().addAll(Styles.TITLE_4);
-        lblUser.setWrapText(true); // Quebra linha se o nome for longo
+        lblUser.setWrapText(true);
 
-        // Pega o cargo do usuário
         String cargoTexto = Sessao.getUsuario().getCargo() != null ? Sessao.getUsuario().getCargo() : "Colaborador";
         Label lblCargo = new Label(cargoTexto.toUpperCase());
         lblCargo.getStyleClass().addAll(Styles.TEXT_SMALL, Styles.TEXT_MUTED);
 
-        // Cria um "Avatar" simples
         Label lblAvatar = new Label(Sessao.getUsuario().getLogin().substring(0, 1).toUpperCase());
         lblAvatar.setStyle("-fx-background-color: #0969da; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 50%; -fx-min-width: 35; -fx-min-height: 35; -fx-alignment: center;");
 
@@ -106,11 +96,10 @@ public class MainFX extends Application {
 
         // 3. BOTÃO DE SAIR
         Button btnLogout = new Button("Sair");
-        btnLogout.getStyleClass().addAll(Styles.BUTTON_OUTLINED, Styles.SMALL); // Botão menor
+        btnLogout.getStyleClass().addAll(Styles.BUTTON_OUTLINED, Styles.SMALL);
         btnLogout.setPrefWidth(100);
         btnLogout.setOnAction(e -> onLogout());
 
-        // Montagem do Header
         VBox header = new VBox(15, logoContainer, userBox, btnLogout);
         header.setPadding(new Insets(30, 20, 20, 20));
         header.setAlignment(Pos.CENTER_LEFT);
@@ -136,9 +125,8 @@ public class MainFX extends Application {
 
         Label lblStatusBD = new Label("● Conectado: PostgreSQL");
         lblStatusBD.getStyleClass().add(Styles.TEXT_SMALL);
-        lblStatusBD.setPadding(new Insets(0, 0, 10, 20)); // Margem inferior e esquerda
+        lblStatusBD.setPadding(new Insets(0, 0, 10, 20));
 
-        // Lógica simples de verificação (Visual)
         try (Connection conn = ConexaoBD.conectar()) {
             if (conn != null && !conn.isClosed()) {
                 lblStatusBD.setStyle("-fx-text-fill: green; -fx-font-size: 11px;");
@@ -148,13 +136,21 @@ public class MainFX extends Application {
             lblStatusBD.setStyle("-fx-text-fill: red; -fx-font-size: 11px;");
         }
 
-        Label lblVersao = new Label("v1.0.0 (Sprint 2)");
+        Label lblVersao = new Label("v1.0.0 (Sprint 3)");
         lblVersao.getStyleClass().addAll(Styles.TEXT_MUTED, Styles.TEXT_SMALL);
         lblVersao.setPadding(new Insets(0, 0, 20, 20));
 
-        // Adiciona tudo na sidebar
         sidebar.getChildren().addAll(header, botoesLayout, spacer, lblStatusBD, lblVersao);
-        return sidebar;
+
+        // <-- MÁGICA 2: Envelopando no ScrollPane -->
+        ScrollPane scrollSidebar = new ScrollPane(sidebar);
+        scrollSidebar.setFitToWidth(true);
+        scrollSidebar.setFitToHeight(true);
+        scrollSidebar.getStyleClass().add("edge-to-edge");
+        // A borda da direita fica no ScrollPane agora!
+        scrollSidebar.setStyle("-fx-background-color: #ffffff; -fx-border-color: #d0d7de; -fx-border-width: 0 1 0 0;");
+
+        return scrollSidebar;
     }
 
     private Button criarBotaoMenu(String texto) {
@@ -168,49 +164,139 @@ public class MainFX extends Application {
     }
 
     // =================================================================================
-    // TELA 0: DASHBOARD (H13)
+    // TELA 0: DASHBOARD (H13 - Turbinado com Finanças)
     // =================================================================================
-    private VBox criarDashboard() {
+    private ScrollPane criarDashboard() {
         Label lblTitulo = new Label("Visão Geral");
         lblTitulo.getStyleClass().addAll(Styles.TITLE_1);
 
-        // 1. Buscando dados reais
+        // --- 1. BUSCA DE DADOS ---
         List<Produto> listaProdutos = produtoDAO.listarTodos();
 
-        // Cálculo: Total de Itens
+        // Puxamos o histórico AQUI EM CIMA agora para fazer a matemática!
+        dao.MovimentacaoDAO daoMov = new dao.MovimentacaoDAO();
+        List<core.LogMovimentacao> historicoCompleto = daoMov.listarHistorico();
+
+        // === CÁLCULOS DO ESTOQUE ATUAL ===
         int totalProdutos = listaProdutos.size();
-
-        // Cálculo: Estoque Crítico
-        long estoqueCritico = listaProdutos.stream()
-                .filter(p -> p.getQntdDisp() < 10)
-                .count();
-
-        // Cálculo: Valor total em estoque
+        long qtdEstoqueBaixo = listaProdutos.stream().filter(this::isEstoqueBaixo).count();
+        long qtdVencidos = listaProdutos.stream().filter(this::isVencido).count();
+        long qtdAVencer = listaProdutos.stream().filter(this::isVencendo).count();
         double valorEmEstoque = listaProdutos.stream().mapToDouble(p -> p.getQntdDisp() * p.getValorUnitVenda()).sum();
+        double lucroPotencial = listaProdutos.stream().mapToDouble(p -> p.getQntdDisp() * p.getLucroUnitarioCalculado()).sum();
 
-        HBox cards = new HBox(20);
+        // === NOVOS CÁLCULOS: DESEMPENHO DO MÊS ATUAL ===
+        java.time.YearMonth mesAtual = java.time.YearMonth.now();
+
+        // 1. Filtra os logs para pegar APENAS os eventos deste mês
+        List<core.LogMovimentacao> logsDoMes = historicoCompleto.stream()
+                .filter(log -> {
+                    if (log.getDataHora() == null) return false;
+                    java.time.LocalDate dataLog = log.getDataHora().toLocalDateTime().toLocalDate();
+                    return java.time.YearMonth.from(dataLog).equals(mesAtual);
+                }).toList();
+
+        // 2. Matemática das VENDAS (Qtd, Valor e Lucro)
+        long qtdVendidaMes = logsDoMes.stream().filter(l -> "VENDA".equals(l.getTipoMovimentacao())).mapToInt(core.LogMovimentacao::getQuantidade).sum();
+
+        double valorVendidoMes = logsDoMes.stream().filter(l -> "VENDA".equals(l.getTipoMovimentacao())).mapToDouble(l -> {
+            Produto p = listaProdutos.stream().filter(prod -> prod.getCodigo() == l.getCodigoProduto()).findFirst().orElse(null);
+            return p != null ? p.getValorUnitVenda() * l.getQuantidade() : 0.0;
+        }).sum();
+
+        double lucroVendidoMes = logsDoMes.stream().filter(l -> "VENDA".equals(l.getTipoMovimentacao())).mapToDouble(l -> {
+            Produto p = listaProdutos.stream().filter(prod -> prod.getCodigo() == l.getCodigoProduto()).findFirst().orElse(null);
+            return p != null ? p.getLucroUnitarioCalculado() * l.getQuantidade() : 0.0;
+        }).sum();
+
+        // 3. Matemática das PERDAS / BAIXAS (Descarte, Roubo, Vencimento)
+        long qtdPerdidaMes = logsDoMes.stream().filter(l -> "BAIXA".equals(l.getTipoMovimentacao())).mapToInt(core.LogMovimentacao::getQuantidade).sum();
+
+        double valorPerdidoMes = logsDoMes.stream().filter(l -> "BAIXA".equals(l.getTipoMovimentacao())).mapToDouble(l -> {
+            Produto p = listaProdutos.stream().filter(prod -> prod.getCodigo() == l.getCodigoProduto()).findFirst().orElse(null);
+            // O prejuízo da baixa é o Custo do produto (Preço de venda - Lucro)
+            return p != null ? (p.getValorUnitVenda() - p.getLucroUnitarioCalculado()) * l.getQuantidade() : 0.0;
+        }).sum();
+
+        // --- 2. MONTAGEM DOS CARTÕES ---
+        FlowPane cards = new FlowPane(20, 20);
         cards.getChildren().addAll(
-                criarCard("Catálogo Ativo", String.valueOf(totalProdutos), "Produtos cadastrados"),
-                criarCard("Estoque Crítico", String.valueOf(estoqueCritico), "Abaixo de 10 un."),
-                criarCard("Valor em Estoque", formatarValorAbreviado(valorEmEstoque), "Preço de venda")
+                criarCard("Vendas no Mês", formatarValorAbreviado(valorVendidoMes), qtdVendidaMes + " itens vendidos"),
+                criarCard("Lucro no Mês", formatarValorAbreviado(lucroVendidoMes), "Lucro estimado gerado"),
+                criarCard("Prejuízo / Baixas", formatarValorAbreviado(valorPerdidoMes), qtdPerdidaMes + " itens perdidos/descartados"),
+                criarCard("Catálogo Ativo", String.valueOf(totalProdutos), "Produtos cadastrados diferentes"),
+                criarCard("Estoque Baixo", String.valueOf(qtdEstoqueBaixo), "Reposição (<= 5 un)"),
+                criarCard("Vencidos / A Vencer", String.valueOf(qtdVencidos + qtdAVencer), "Descarte ou Promoção"),
+                criarCard("Capital em Estoque", formatarValorAbreviado(valorEmEstoque), "Preço de venda total"),
+                criarCard("Lucro Estimado Total", formatarValorAbreviado(lucroPotencial), "Se vender tudo")
         );
 
-        Label lblRecentes = new Label("Últimas Movimentações");
+        // --- 3. TABELA DE ÚLTIMAS MOVIMENTAÇÕES ---
+        Label lblRecentes = new Label("Últimas Movimentações (Top 15)");
         lblRecentes.getStyleClass().addAll(Styles.TITLE_3);
         VBox.setMargin(lblRecentes, new Insets(20, 0, 0, 0));
 
-        TableView<String> tabRecentes = new TableView<>();
-        tabRecentes.getStyleClass().add(Styles.STRIPED);
-        tabRecentes.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
-        tabRecentes.getColumns().addAll(
-                new TableColumn<>("Ação"), new TableColumn<>("Produto"),
-                new TableColumn<>("Qtd"), new TableColumn<>("Data/Hora")
-        );
+        TableView<core.LogMovimentacao> tabRecentes = new TableView<>();
+        tabRecentes.getStyleClass().addAll(Styles.STRIPED, Styles.BORDERED);
         VBox.setVgrow(tabRecentes, Priority.ALWAYS);
+        tabRecentes.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+
+        TableColumn<core.LogMovimentacao, String> colAcao = new TableColumn<>("Ação");
+        colAcao.setCellValueFactory(new PropertyValueFactory<>("tipoMovimentacao"));
+        colAcao.setMinWidth(120);
+        colAcao.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    setStyle("-fx-font-weight: bold;");
+                    switch (item) {
+                        case "ENTRADA" -> setTextFill(javafx.scene.paint.Color.web("#1a7f37"));
+                        case "BAIXA" -> setTextFill(javafx.scene.paint.Color.web("#cf222e"));
+                        case "VENDA" -> setTextFill(javafx.scene.paint.Color.web("#0969da"));
+                    }
+                }
+            }
+        });
+
+        TableColumn<core.LogMovimentacao, Integer> colProd = new TableColumn<>("Cód. Prod");
+        colProd.setCellValueFactory(new PropertyValueFactory<>("codigoProduto"));
+        colProd.setMinWidth(100);
+
+        TableColumn<core.LogMovimentacao, Integer> colQtd = new TableColumn<>("Qtd");
+        colQtd.setCellValueFactory(new PropertyValueFactory<>("quantidade"));
+        colQtd.setMinWidth(80);
+
+        TableColumn<core.LogMovimentacao, String> colUser = new TableColumn<>("Usuário");
+        colUser.setCellValueFactory(new PropertyValueFactory<>("usuario"));
+        colUser.setMinWidth(180);
+
+        TableColumn<core.LogMovimentacao, String> colData = new TableColumn<>("Data/Hora");
+        colData.setCellValueFactory(new PropertyValueFactory<>("dataHoraFormatada"));
+        colData.setMinWidth(160);
+
+        tabRecentes.getColumns().addAll(colAcao, colProd, colQtd, colUser, colData);
+
+        // --- 4. POPULANDO A TABELA COM DADOS DO BANCO ---
+        List<core.LogMovimentacao> ultimas15 = historicoCompleto.size() > 15 ? historicoCompleto.subList(0, 15) : historicoCompleto;
+
+        tabRecentes.setItems(FXCollections.observableArrayList(ultimas15));
+        tabRecentes.setPrefHeight(350); // Garante que a tabela tenha altura mesmo se a tela diminuir
 
         VBox layout = new VBox(20, lblTitulo, cards, lblRecentes, tabRecentes);
         layout.setPadding(new Insets(40));
-        return layout;
+        layout.setStyle("-fx-background-color: transparent;"); // Evita conflito de cor
+        layout.setMinWidth(950);
+        ScrollPane scrollPane = new ScrollPane(layout);
+        scrollPane.setFitToWidth(true); // Faz o conteúdo acompanhar a largura da janela
+        scrollPane.getStyleClass().add("edge-to-edge");
+        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: #ffffff;");
+
+        return scrollPane;
     }
 
     private VBox criarCard(String titulo, String valor, String subtitulo) {
@@ -219,15 +305,19 @@ public class MainFX extends Application {
 
         Label lblValor = new Label(valor);
         lblValor.getStyleClass().addAll(Styles.TITLE_1);
-        lblValor.setStyle("-fx-font-size: 36px;"); // Sobrescreve apenas o tamanho
+        lblValor.setStyle("-fx-font-size: 36px;");
 
         Label lblSub = new Label(subtitulo);
         lblSub.getStyleClass().addAll(Styles.TEXT_SMALL);
 
         VBox card = new VBox(5, lblTitulo, lblValor, lblSub);
         card.setPadding(new Insets(20));
-        card.setPrefSize(280, 120);
-        // Aplica a classe de elevação do AtlantaFX (Sombra suave)
+
+        // MÁGICA RESPONSIVA: Garante tamanho mínimo e preferencial
+        card.setMinWidth(260); // Nunca fica menor que isso
+        card.setPrefSize(280, 120); // Tamanho ideal
+        card.setMaxWidth(320); // Impede que estique demais se a tela for gigante
+
         card.getStyleClass().addAll("card", Styles.ELEVATED_1);
         card.setStyle("-fx-background-color: white; -fx-background-radius: 6px;");
         return card;
@@ -282,7 +372,17 @@ public class MainFX extends Application {
         // 2. AGORA SIM, CRIAMOS OS BOTÕES DE AÇÃO
         Button btnNovo = new Button("Cadastrar Produto");
         btnNovo.getStyleClass().addAll(Styles.SUCCESS);
-        btnNovo.setOnAction(e -> abrirModalCadastroProduto(masterData));
+        btnNovo.setOnAction(e -> abrirModalCadastroProduto(null, masterData));
+        Button btnEditar = new Button("Editar Selecionado");
+        btnEditar.getStyleClass().addAll(Styles.WARNING);
+        btnEditar.setOnAction(e -> {
+            Produto selecionado = tabela.getSelectionModel().getSelectedItem();
+            if (selecionado == null) {
+                mostrarErro("Atenção", "Selecione um produto na tabela clicando nele primeiro.");
+                return;
+            }
+            abrirModalCadastroProduto(selecionado, masterData); // Chama a janela enviando o produto!
+        });
 
         Button btnExcluir = new Button("Excluir Selecionado");
         btnExcluir.getStyleClass().addAll(Styles.DANGER);
@@ -314,8 +414,7 @@ public class MainFX extends Application {
         // 3. MONTAMOS A BARRA DE FERRAMENTAS
         Region espacador = new Region();
         HBox.setHgrow(espacador, Priority.ALWAYS);
-
-        HBox barraFerramentas = new HBox(10, txtBusca, cmbOrdenacao, btnAtualizar, espacador, btnExcluir, btnNovo);
+        HBox barraFerramentas = new HBox(10, txtBusca, cmbOrdenacao, btnAtualizar, espacador, btnEditar, btnExcluir, btnNovo);
         barraFerramentas.setAlignment(Pos.CENTER_LEFT);
 
         // 3. TABELA (SortedList)
@@ -323,8 +422,6 @@ public class MainFX extends Application {
         tabela.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
 
         // --- Definição das Colunas ---
-
-
 
         TableColumn<Produto, Integer> colId = new TableColumn<>("Cód");
         colId.setCellValueFactory(new PropertyValueFactory<>("codigo"));
@@ -347,61 +444,103 @@ public class MainFX extends Application {
             return new SimpleStringProperty(p.getFornecedor().getNome());
         });
 
-        TableColumn<Produto, Integer> colQtd = new TableColumn<>("Estoque");
-        colQtd.setCellValueFactory(new PropertyValueFactory<>("qntdDisp"));
-        colQtd.setMaxWidth(100);
-        // Destaca em vermelho se estoque baixo
-        colQtd.setCellFactory(column -> new TableCell<>() {
+        TableColumn<Produto, String> colValidade = new TableColumn<>("Validade / Garantia");
+        colValidade.setCellValueFactory(cellData -> {
+            Produto p = cellData.getValue();
+            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy");
+
+            if (p instanceof core.ProdutoPerecivel perecivel && perecivel.getDataValidade() != null) {
+                return new SimpleStringProperty("Vence: " + sdf.format(perecivel.getDataValidade()));
+            } else if (p instanceof core.Cosmetico cosmetico && cosmetico.getDataValidade() != null) {
+                return new SimpleStringProperty("Vence: " + sdf.format(cosmetico.getDataValidade()));
+            } else if (p instanceof core.Eletronico eletronico && eletronico.getDataGarantia() != null) {
+                return new SimpleStringProperty("Garantia: " + sdf.format(eletronico.getDataGarantia()));
+            }
+            return new SimpleStringProperty("-");
+        });
+
+        colValidade.setCellFactory(column -> new TableCell<>() {
             @Override
-            protected void updateItem(Integer item, boolean empty) {
+            protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
-                    setText(null);
-                    setStyle("");
+                    setText(null); setStyle("");
                 } else {
-                    setText(item.toString());
-                    if (item < 5) {
-                        setStyle("-fx-text-fill: #cf222e; -fx-font-weight: bold;"); // Vermelho
+                    setText(item);
+                    Produto p = getTableRow() != null ? getTableRow().getItem() : null;
+
+                    if (p != null && isVencido(p)) {
+                        setStyle("-fx-text-fill: #cf222e; -fx-font-weight: bold;"); // Vermelho para VENCIDO
+                    } else if (p != null && isVencendo(p)) {
+                        setStyle("-fx-text-fill: #b35900; -fx-font-weight: bold;"); // Laranja/Mostarda para A VENCER
                     } else {
-                        setStyle("-fx-text-fill: #1a7f37;"); // Verde
+                        setStyle("-fx-text-fill: #1a7f37;"); // Verde para OK
                     }
                 }
             }
         });
 
+        TableColumn<Produto, Integer> colQtd = new TableColumn<>("Estoque");
+        colQtd.setCellValueFactory(new PropertyValueFactory<>("qntdDisp"));
+        colQtd.setMaxWidth(100);
+        colQtd.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(Integer item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null); setStyle("");
+                } else {
+                    setText(item.toString());
+                    Produto p = getTableRow() != null ? getTableRow().getItem() : null;
+                    // Fica vermelho APENAS se o estoque estiver baixo
+                    if (p != null && isEstoqueBaixo(p)) {
+                        setStyle("-fx-text-fill: #cf222e; -fx-font-weight: bold;");
+                    } else {
+                        setStyle("-fx-text-fill: #1a7f37;");
+                    }
+                }
+            }
+        });
+
+        // --- RESTAURANDO A COLUNA DE VALOR QUE HAVIA SUMIDO ---
         TableColumn<Produto, String> colValor = new TableColumn<>("Valor (R$)");
         colValor.setCellValueFactory(cellData ->
                 new SimpleStringProperty(String.format("R$ %.2f", cellData.getValue().getValorUnitVenda()))
         );
         colValor.setMaxWidth(120);
 
-        tabela.getColumns().addAll(colId, colDesc, colCat, colOrigem, colQtd, colValor);
+        tabela.getColumns().addAll(colId, colDesc, colCat, colOrigem, colValidade, colQtd, colValor);
 
-        // 1. Lógica para contar quantos estão críticos (Subtarefa G7-72)
-        long qtdCriticos = listaOriginal.stream()
-                .filter(p -> p.getQntdDisp() <= 5)
-                .count();
 
-        // 2. Criar um alerta visual de resumo
+        // =========================================================
+        // RESUMO INTELIGENTE E ALERTAS DA TELA DE CONSULTA
+        // =========================================================
+
+        // 1. Contagens separadas
+        long qtdBaixo = listaOriginal.stream().filter(this::isEstoqueBaixo).count();
+        long qtdVencidos = listaOriginal.stream().filter(this::isVencido).count();
+        long qtdAVencer = listaOriginal.stream().filter(this::isVencendo).count();
+
+        // 2. Alerta visual de resumo inteligente
         HBox alertaCritico = new HBox(10);
         alertaCritico.setAlignment(Pos.CENTER_LEFT);
         alertaCritico.setPadding(new Insets(10));
 
-        if (qtdCriticos > 0) {
+        if (qtdBaixo > 0 || qtdVencidos > 0 || qtdAVencer > 0) {
             alertaCritico.setStyle("-fx-background-color: #ffebe9; -fx-border-color: #ff8182; -fx-border-radius: 5;");
-            Label lblAlerta = new Label("⚠ Atenção: Existem " + qtdCriticos + " produtos com estoque crítico (abaixo de 5 unidades)!");
+
+            String msg = "⚠ Atenção: ";
+            if (qtdBaixo > 0) msg += qtdBaixo + " produto(s) c/ estoque baixo. | ";
+            if (qtdVencidos > 0) msg += qtdVencidos + " produto(s) VENCIDO(S). | ";
+            if (qtdAVencer > 0) msg += qtdAVencer + " produto(s) a vencer.";
+
+            Label lblAlerta = new Label(msg);
             lblAlerta.setStyle("-fx-text-fill: #cf222e; -fx-font-weight: bold;");
             alertaCritico.getChildren().add(lblAlerta);
-        } else {
-            alertaCritico.setStyle("-fx-background-color: #dafbe1; -fx-border-color: #4ac26b; -fx-border-radius: 5;");
-            Label lblOk = new Label("✅ Todos os produtos estão com estoque saudável.");
-            lblOk.setStyle("-fx-text-fill: #1a7f37;");
-            alertaCritico.getChildren().add(lblOk);
         }
 
         // 4. LÓGICA DE FILTRAGEM (Ao digitar)
         txtBusca.textProperty().addListener((observable, oldValue, newValue) -> filteredData.setPredicate(produto -> {
-            // Se o filtro estiver vazio, mostra tudo
             if (newValue == null || newValue.isEmpty()) {
                 return true;
             }
@@ -412,8 +551,6 @@ public class MainFX extends Application {
             if (String.valueOf(produto.getCodigo()).contains(lowerCaseFilter)) return true;
             if (produto.getDescricao().toLowerCase().contains(lowerCaseFilter)) return true;
             if (produto.getCategoria().toLowerCase().contains(lowerCaseFilter)) return true;
-
-            // Busca extra: Verifica fabricante se for cosmético
             if (produto instanceof Cosmetico) {
                 return ((Cosmetico) produto).getFabricante().toLowerCase().contains(lowerCaseFilter);
             }
@@ -421,7 +558,7 @@ public class MainFX extends Application {
             return false; // Não encontrou nada
         }));
 
-        // 5. LÓGICA DE ORDENAÇÃO (ComboBox + Tabela)
+        // 5. LÓGICA DE ORDENAÇÃO
         // Envolvemos a Lista Filtrada em uma Lista Ordenada
         SortedList<Produto> sortedData = new SortedList<>(filteredData);
 
@@ -494,12 +631,14 @@ public class MainFX extends Application {
 
 
     // =================================================================================
-    // MODAL DE CADASTRO DE PRODUTOS (Dinâmico e Integrado ao Banco)
+    // MODAL DE CADASTRO E EDIÇÃO DE PRODUTOS (Híbrido)
     // =================================================================================
-    private void abrirModalCadastroProduto(ObservableList<Produto> listaAtual) {
+    private void abrirModalCadastroProduto(Produto produtoEdicao, ObservableList<Produto> listaAtual) {
+        boolean isEdicao = (produtoEdicao != null);
+
         Stage stageModal = new Stage();
         stageModal.initModality(javafx.stage.Modality.APPLICATION_MODAL);
-        stageModal.setTitle("Novo Cadastro de Produto");
+        stageModal.setTitle(isEdicao ? "Editar Produto: " + produtoEdicao.getDescricao() : "Novo Cadastro de Produto");
 
         // 1. Campos Básicos
         TextField txtCodigo = new TextField();
@@ -515,7 +654,7 @@ public class MainFX extends Application {
         cmbFornecedor.getItems().addAll(new dao.FornecedorDAO().listarTodos());
         cmbFornecedor.setPromptText("Selecione um fornecedor...");
 
-        // 3. Campos Específicos (Declarados fora para o Botão Salvar conseguir ler)
+        // 3. Campos Específicos
         TextField txtValidade = new TextField();
         txtValidade.setPromptText("dd/mm/aaaa");
         aplicarMascaraData(txtValidade);
@@ -538,20 +677,56 @@ public class MainFX extends Application {
             String selecionado = cmbTipo.getValue();
 
             if ("Cosmético".equals(selecionado)) {
-                areaDinamica.getChildren().addAll(
-                        new Label("Data de Validade:"), txtValidade,
-                        new Label("Fabricante:"), txtFabricante
-                );
+                areaDinamica.getChildren().addAll(new Label("Data de Validade:"), txtValidade, new Label("Fabricante:"), txtFabricante);
             } else if ("Eletrônico".equals(selecionado)) {
-                areaDinamica.getChildren().addAll(
-                        new Label("Meses de Garantia:"), txtGarantia
-                );
+                areaDinamica.getChildren().addAll(new Label("Meses de Garantia:"), txtGarantia);
             } else if ("Perecível".equals(selecionado)) {
-                areaDinamica.getChildren().addAll(
-                        new Label("Data de Validade:"), txtValidade
-                );
+                areaDinamica.getChildren().addAll(new Label("Data de Validade:"), txtValidade);
             }
         });
+
+        // --- PREENCHIMENTO AUTOMÁTICO SE FOR EDIÇÃO ---
+        if (isEdicao) {
+            txtCodigo.setText(String.valueOf(produtoEdicao.getCodigo()));
+            txtCodigo.setDisable(true); // Bloqueia o código (não pode mudar Chave Primária)
+
+            txtDescricao.setText(produtoEdicao.getDescricao());
+            txtCategoria.setText(produtoEdicao.getCategoria());
+            txtQtd.setText(String.valueOf(produtoEdicao.getQntdDisp()));
+            txtPreco.setText(String.format("%.2f", produtoEdicao.getValorUnitVenda()));
+            txtLucro.setText(String.format("%.2f", produtoEdicao.getPercentualLucro()));
+
+            // Acha o fornecedor na lista e seleciona
+            for (Fornecedor f : cmbFornecedor.getItems()) {
+                if (f.getId() == produtoEdicao.getFornecedor().getId()) {
+                    cmbFornecedor.setValue(f);
+                    break;
+                }
+            }
+
+            // Preenche os dados específicos e o tipo
+            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy");
+            switch (produtoEdicao) {
+                case Cosmetico c -> {
+                    cmbTipo.setValue("Cosmético");
+                    if (c.getDataValidade() != null) txtValidade.setText(sdf.format(c.getDataValidade()));
+                    txtFabricante.setText(c.getFabricante());
+                }
+                case Eletronico eletronico -> {
+                    cmbTipo.setValue("Eletrônico");
+                    txtGarantia.setText("12"); // Exemplo base
+                }
+                case ProdutoPerecivel pp -> {
+                    cmbTipo.setValue("Perecível");
+                    if (pp.getDataValidade() != null) txtValidade.setText(sdf.format(pp.getDataValidade()));
+                }
+                default -> {
+                }
+            }
+
+            cmbTipo.setDisable(true); // O tipo (perecível/eletrônico) não muda depois de criado
+            cmbTipo.fireEvent(new javafx.event.ActionEvent()); // Força o painel dinâmico a aparecer
+        }
 
         // 5. Montando o Formulário
         GridPane form = new GridPane();
@@ -564,93 +739,62 @@ public class MainFX extends Application {
         form.addRow(3, new Label("Preço Venda:"), txtPreco, new Label("Lucro (%):"), txtLucro);
         form.addRow(4, new Label("Tipo:"), cmbTipo);
 
-        Button btnSalvar = new Button("Salvar Produto no Banco");
+        Button btnSalvar = new Button(isEdicao ? "Salvar Alterações" : "Salvar Novo Produto");
         btnSalvar.getStyleClass().addAll(Styles.SUCCESS, Styles.LARGE);
         btnSalvar.setMaxWidth(Double.MAX_VALUE);
 
-        // --- A MÁGICA: LÓGICA DE SALVAMENTO ---
+        // --- LÓGICA DE SALVAMENTO ---
         btnSalvar.setOnAction(event -> {
             try {
-                // Validação de Preenchimento Básico
-                if (txtCodigo.getText().isEmpty() || txtDescricao.getText().isEmpty() ||
-                        txtPreco.getText().isEmpty() || txtQtd.getText().isEmpty() ||
-                        cmbFornecedor.getValue() == null || cmbTipo.getValue() == null) {
-                    throw new IllegalArgumentException("Por favor, preencha todos os campos obrigatórios e selecione um fornecedor e um tipo.");
+                if (txtCodigo.getText().isEmpty() || txtDescricao.getText().isEmpty() || txtPreco.getText().isEmpty() || txtQtd.getText().isEmpty() || cmbFornecedor.getValue() == null || cmbTipo.getValue() == null) {
+                    throw new IllegalArgumentException("Preencha todos os campos obrigatórios.");
                 }
 
-                // Conversão dos tipos
                 int cod = Integer.parseInt(txtCodigo.getText());
                 String desc = txtDescricao.getText();
                 String cat = txtCategoria.getText();
                 int qtd = Integer.parseInt(txtQtd.getText());
-                // Substitui vírgula por ponto para não dar erro no Double
-                String precoLimpo = txtPreco.getText().replaceAll("[^\\d,]", "").replace(",", ".");
-                double preco = Double.parseDouble(precoLimpo);
+                double preco = Double.parseDouble(txtPreco.getText().replaceAll("[^\\d,]", "").replace(",", "."));
                 double lucro = txtLucro.getText().isEmpty() ? 0.0 : Double.parseDouble(txtLucro.getText().replace(",", "."));
                 Fornecedor forn = cmbFornecedor.getValue();
                 String tipo = cmbTipo.getValue();
 
                 Produto novoProduto = null;
-                // Formatador para transformar a String dd/MM/yyyy em java.util.Date
                 java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy");
-                sdf.setLenient(false); // Impede datas absurdas como 32/13/2025
+                sdf.setLenient(false);
 
-                // Criação do objeto por Polimorfismo
                 if ("Cosmético".equals(tipo)) {
-                    if (txtValidade.getText().isEmpty() || txtFabricante.getText().isEmpty()) {
-                        throw new IllegalArgumentException("Cosméticos exigem Data de Validade e Fabricante.");
-                    }
                     java.util.Date validade = sdf.parse(txtValidade.getText());
                     novoProduto = new Cosmetico(cod, desc, cat, qtd, preco, lucro, forn, validade, txtFabricante.getText());
-
                 } else if ("Eletrônico".equals(tipo)) {
-                    if (txtGarantia.getText().isEmpty()) {
-                        throw new IllegalArgumentException("Eletrônicos exigem o tempo de garantia (em meses).");
-                    }
                     int garantia = Integer.parseInt(txtGarantia.getText());
                     novoProduto = new Eletronico(cod, desc, cat, qtd, preco, lucro, forn, garantia);
-
                 } else if ("Perecível".equals(tipo)) {
-                    if (txtValidade.getText().isEmpty()) {
-                        throw new IllegalArgumentException("Produtos perecíveis exigem Data de Validade.");
-                    }
                     java.util.Date validade = sdf.parse(txtValidade.getText());
                     novoProduto = new ProdutoPerecivel(cod, desc, cat, qtd, preco, lucro, forn, validade);
                 }
 
-                // Salva no Banco de Dados
                 dao.ProdutoDAO daoProd = new dao.ProdutoDAO();
                 if (novoProduto != null) {
-                    daoProd.salvar(novoProduto);
+                    if (isEdicao) {
+                        daoProd.atualizar(novoProduto);
+                        mostrarAlerta("Produto atualizado com sucesso!");
+                    } else {
+                        daoProd.salvar(novoProduto);
+                        mostrarAlerta("Produto salvo com sucesso!");
+                    }
                 }
 
-                // Atualiza a tabela que está na janela principal atrás do modal
                 listaAtual.setAll(daoProd.listarTodos());
-
-                mostrarAlerta("Produto salvo com sucesso no banco de dados!");
                 stageModal.close();
 
-            } catch (NumberFormatException ex) {
-                mostrarErro("Erro de Formato", "Por favor, digite apenas números válidos nos campos: Código, Quantidade, Preço, Lucro e Garantia.");
-            } catch (java.text.ParseException ex) {
-                mostrarErro("Erro na Data", "Por favor, introduza uma data válida no formato dd/mm/aaaa (Ex: 25/12/2026).");
-            } catch (IllegalArgumentException ex) {
-                mostrarErro("Aviso", ex.getMessage());
-            } catch (java.sql.SQLException ex) {
-                if (ex.getMessage().contains("duplicate key")) {
-                    mostrarErro("Código Duplicado", "Já existe um produto com o código " + txtCodigo.getText() + " cadastrado no banco.");
-                } else {
-                    mostrarErro("Erro de Banco de Dados", ex.getMessage());
-                }
             } catch (Exception ex) {
-                mostrarErro("Erro Inesperado", ex.getMessage());
-                ex.printStackTrace();
+                mostrarErro("Erro ao Salvar", ex.getMessage());
             }
         });
 
         VBox layout = new VBox(20, form, new Label("Detalhes Específicos:"), areaDinamica, btnSalvar);
         layout.setPadding(new Insets(30));
-
         Scene scene = new Scene(layout, 700, 550);
         stageModal.setScene(scene);
         stageModal.showAndWait();
@@ -659,8 +803,8 @@ public class MainFX extends Application {
     // =================================================================================
     // TELA EXTRA: FRENTE DE CAIXA / VENDAS (PDV)
     // =================================================================================
-    private VBox criarTelaVendas() {
-        Label lblTitulo = new Label("PDV - Ponto de Venda");
+    private ScrollPane criarTelaVendas() {
+        Label lblTitulo = new Label("Caixa");
         lblTitulo.getStyleClass().addAll(Styles.TITLE_1);
 
         // Lista que vai guardar os itens do carrinho
@@ -698,25 +842,28 @@ public class MainFX extends Application {
 
         TableView<ItemCarrinho> tabelaCart = new TableView<>();
         tabelaCart.getStyleClass().addAll(Styles.STRIPED, Styles.BORDERED);
-        tabelaCart.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
         VBox.setVgrow(tabelaCart, Priority.ALWAYS);
+        tabelaCart.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
 
         TableColumn<ItemCarrinho, String> colCod = new TableColumn<>("Cód");
         colCod.setCellValueFactory(new PropertyValueFactory<>("codigo"));
-        colCod.setMaxWidth(80);
+        colCod.setMinWidth(80);
 
         TableColumn<ItemCarrinho, String> colDesc = new TableColumn<>("Descrição");
         colDesc.setCellValueFactory(new PropertyValueFactory<>("descricao"));
+        colDesc.setMinWidth(250);
 
         TableColumn<ItemCarrinho, String> colQtd = new TableColumn<>("Qtd");
         colQtd.setCellValueFactory(new PropertyValueFactory<>("quantidade"));
-        colQtd.setMaxWidth(80);
+        colQtd.setMinWidth(80);
 
         TableColumn<ItemCarrinho, String> colUn = new TableColumn<>("Vlr. Unitário");
         colUn.setCellValueFactory(new PropertyValueFactory<>("valorUnitarioFormatado"));
+        colUn.setMinWidth(120);
 
         TableColumn<ItemCarrinho, String> colSub = new TableColumn<>("Subtotal");
         colSub.setCellValueFactory(new PropertyValueFactory<>("subtotalFormatado"));
+        colSub.setMinWidth(120);
 
         tabelaCart.getColumns().addAll(colCod, colDesc, colQtd, colUn, colSub);
         tabelaCart.setItems(carrinho);
@@ -737,14 +884,12 @@ public class MainFX extends Application {
 
         HBox rodapeTotal = new HBox(20, lblTextoTotal, lblTotalValor, new Region(), btnFinalizar);
         rodapeTotal.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(rodapeTotal.getChildren().get(2), Priority.ALWAYS); // Espaçador empurra o botão pra direita
+        HBox.setHgrow(rodapeTotal.getChildren().get(2), Priority.ALWAYS);
 
         painelDireito.getChildren().addAll(tabelaCart, rodapeTotal);
 
-        // --- LÓGICA DO CARRINHO (A MÁGICA VISUAL) ---
+        // --- LÓGICA DO CARRINHO ---
 
-        // Atalho do Enter
-        // Enter no campo de Código: Faz a pré-busca e depois pula para Quantidade
         txtCod.setOnAction(e -> {
             try {
                 int cod = Integer.parseInt(txtCod.getText());
@@ -754,11 +899,11 @@ public class MainFX extends Application {
                 if (pBusca != null) {
                     lblInfo.setText("Produto: " + pBusca.getDescricao() + " | Estoque: " + pBusca.getQntdDisp());
                     lblInfo.setStyle("-fx-text-fill: #0969da; -fx-font-weight: bold;"); // Azul para pré-visualização
-                    txtQtd.requestFocus(); // Pula para a quantidade
+                    txtQtd.requestFocus();
                 } else {
                     lblInfo.setText("❌ Produto não encontrado!");
                     lblInfo.setStyle("-fx-text-fill: red;");
-                    txtCod.selectAll(); // Seleciona o texto errado para facilitar apagar
+                    txtCod.selectAll();
                 }
             } catch (NumberFormatException ex) {
                 lblInfo.setText("❌ Digite um código válido.");
@@ -766,10 +911,8 @@ public class MainFX extends Application {
             }
         });
 
-        // Enter no campo de Quantidade: "clica" no botão de Adicionar
         txtQtd.setOnAction(e -> btnAdd.fire());
 
-        // Função mágica para atualizar o R$ grandão sempre que a tabela mudar
         Runnable atualizarTotal = () -> {
             double soma = carrinho.stream().mapToDouble(ItemCarrinho::getSubtotal).sum();
             lblTotalValor.setText(String.format("R$ %.2f", soma));
@@ -790,7 +933,6 @@ public class MainFX extends Application {
                     return;
                 }
 
-                // Verifica se já tem no carrinho para somar a quantidade em vez de duplicar a linha
                 ItemCarrinho itemExistente = carrinho.stream().filter(i -> i.getCodigo() == cod).findFirst().orElse(null);
 
                 int qtdTotalDesejada = qtd + (itemExistente != null ? itemExistente.getQuantidade() : 0);
@@ -803,7 +945,7 @@ public class MainFX extends Application {
 
                 if (itemExistente != null) {
                     itemExistente.adicionarQuantidade(qtd);
-                    tabelaCart.refresh(); // Força a tabela a atualizar os números visualmente
+                    tabelaCart.refresh();
                 } else {
                     carrinho.add(new ItemCarrinho(pEncontrado, qtd));
                 }
@@ -812,7 +954,7 @@ public class MainFX extends Application {
                 lblInfo.setStyle("-fx-text-fill: green;");
                 txtCod.clear();
                 txtQtd.setText("1");
-                txtCod.requestFocus(); // Foco volta pro código pra bipar o próximo!
+                txtCod.requestFocus();
 
                 atualizarTotal.run();
 
@@ -851,7 +993,7 @@ public class MainFX extends Application {
                         lblTotalValor.setText("R$ 0,00");
                         txtCod.clear();
                         txtQtd.setText("1");
-                        lblInfo.setText("Caixa livre. Aguardando próximo cliente...");
+                        lblInfo.setText("Caixa livre.");
                         lblInfo.setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
                         txtCod.requestFocus(); // Foco no código de barras!
 
@@ -862,29 +1004,134 @@ public class MainFX extends Application {
             });
         });
 
+        tabelaCart.setMinHeight(300);
+
         HBox split = new HBox(30, painelEsquerdo, painelDireito);
         VBox layout = new VBox(20, lblTitulo, split);
         layout.setPadding(new Insets(40));
-        return layout;
+        layout.setStyle("-fx-background-color: transparent;");
+        layout.setMinWidth(1050);
+
+        ScrollPane scrollPane = new ScrollPane(layout);
+        scrollPane.setFitToWidth(true);
+        scrollPane.getStyleClass().add("edge-to-edge");
+        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: #ffffff;");
+
+        return scrollPane;
     }
 
     // =================================================================================
-    // TELA 4: RELATÓRIOS E LOGS (Auditoria)
+    // TELA 4: RELATÓRIOS E LOGS (Agora com Abas Financeiras)
     // =================================================================================
-    private VBox criarTelaRelatorios() {
-        Label lblTitulo = new Label("Logs de Movimentação (Auditoria)");
+    private ScrollPane criarTelaRelatorios() {
+        Label lblTitulo = new Label("Relatórios");
         lblTitulo.getStyleClass().addAll(Styles.TITLE_1);
 
-        Label lblSub = new Label("Histórico completo de entradas, vendas e baixas de estoque.");
+        Label lblSub = new Label("Acompanhe o desempenho financeiro e o histórico de segurança do sistema.");
         lblSub.getStyleClass().add(Styles.TEXT_MUTED);
 
-        // --- TABELA DE LOGS ---
+        TabPane tabPane = new TabPane();
+        tabPane.getStyleClass().addAll(Styles.DENSE);
+        tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        VBox.setVgrow(tabPane, Priority.ALWAYS);
+
+        // ==========================================
+        // ABA 1: DESEMPENHO FINANCEIRO MENSAL
+        // ==========================================
+        TableView<ResumoMes> tabelaFinancas = new TableView<>();
+        tabelaFinancas.getStyleClass().addAll(Styles.STRIPED, Styles.BORDERED);
+        tabelaFinancas.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+        VBox.setVgrow(tabelaFinancas, Priority.ALWAYS);
+
+        TableColumn<ResumoMes, String> colMes = new TableColumn<>("Mês/Ano");
+        colMes.setCellValueFactory(new PropertyValueFactory<>("mesAno"));
+
+        TableColumn<ResumoMes, Integer> colQtdVendas = new TableColumn<>("Itens Vendidos");
+        colQtdVendas.setCellValueFactory(new PropertyValueFactory<>("qtdVendas"));
+
+        TableColumn<ResumoMes, String> colTotalVendido = new TableColumn<>("Faturamento Bruto");
+        colTotalVendido.setCellValueFactory(new PropertyValueFactory<>("totalVendidoFormatado"));
+
+        TableColumn<ResumoMes, String> colLucro = new TableColumn<>("Lucro Estimado");
+        colLucro.setCellValueFactory(new PropertyValueFactory<>("lucroTotalFormatado"));
+        colLucro.setStyle("-fx-text-fill: #1a7f37; -fx-font-weight: bold;"); // Verde
+
+        TableColumn<ResumoMes, String> colPrejuizo = new TableColumn<>("Prejuízo (Baixas/Vencidos)");
+        colPrejuizo.setCellValueFactory(new PropertyValueFactory<>("prejuizoFormatado"));
+        colPrejuizo.setStyle("-fx-text-fill: #cf222e; -fx-font-weight: bold;"); // Vermelho
+
+        tabelaFinancas.getColumns().addAll(colMes, colQtdVendas, colTotalVendido, colLucro, colPrejuizo);
+
+        tabelaFinancas.setRowFactory(tv -> {
+            TableRow<core.ResumoMes> row = new TableRow<>();
+
+            row.styleProperty().bind(
+                    javafx.beans.binding.Bindings.when(row.emptyProperty())
+                            .then("")
+                            .otherwise("-fx-cursor: hand;")
+            );
+
+            row.setOnMouseClicked(event -> {
+                if (event.getClickCount() == 2 && (!row.isEmpty())) {
+                    core.ResumoMes rowData = row.getItem();
+                    abrirModalDetalhesMes(rowData.getMesAno()); // Chama a nova janela passando o mês!
+                }
+            });
+            return row;
+        });
+
+
+        Runnable carregarFinancas = () -> {
+            dao.MovimentacaoDAO daoMov = new dao.MovimentacaoDAO();
+            List<core.LogMovimentacao> historico = daoMov.listarHistorico();
+            List<Produto> produtos = produtoDAO.listarTodos();
+
+            java.util.Map<String, ResumoMes> mapaMeses = new java.util.TreeMap<>(java.util.Collections.reverseOrder());
+            java.time.format.DateTimeFormatter fmtStr = java.time.format.DateTimeFormatter.ofPattern("MM/yyyy");
+            java.time.format.DateTimeFormatter fmtSort = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM");
+
+            for (core.LogMovimentacao log : historico) {
+                if (log.getDataHora() == null) continue;
+                java.time.LocalDate data = log.getDataHora().toLocalDateTime().toLocalDate();
+                String chaveOrdem = data.format(fmtSort);
+                String labelMes = data.format(fmtStr);
+
+                mapaMeses.putIfAbsent(chaveOrdem, new ResumoMes(labelMes));
+                ResumoMes resumo = mapaMeses.get(chaveOrdem);
+
+                Produto p = produtos.stream().filter(prod -> prod.getCodigo() == log.getCodigoProduto()).findFirst().orElse(null);
+
+                if (p != null) {
+                    if ("VENDA".equals(log.getTipoMovimentacao())) {
+                        resumo.addVenda(log.getQuantidade(), p.getValorUnitVenda() * log.getQuantidade(), p.getLucroUnitarioCalculado() * log.getQuantidade());
+                    } else if ("BAIXA".equals(log.getTipoMovimentacao())) {
+                        // O prejuízo é o preço de custo (venda - lucro)
+                        resumo.addBaixa((p.getValorUnitVenda() - p.getLucroUnitarioCalculado()) * log.getQuantidade());
+                    }
+                }
+            }
+            tabelaFinancas.setItems(FXCollections.observableArrayList(mapaMeses.values()));
+        };
+        carregarFinancas.run();
+
+        Button btnAttFinancas = new Button("🔄 Atualizar Relatório");
+        btnAttFinancas.getStyleClass().add(Styles.BUTTON_OUTLINED);
+        btnAttFinancas.setOnAction(e -> carregarFinancas.run());
+        HBox barraFinancas = new HBox(btnAttFinancas);
+        barraFinancas.setAlignment(Pos.CENTER_RIGHT);
+
+        VBox layoutFinanceiro = new VBox(15, barraFinancas, tabelaFinancas);
+        layoutFinanceiro.setPadding(new Insets(20));
+        Tab tabFinanceiro = new Tab("Desempenho Financeiro (Mensal)", layoutFinanceiro);
+
+        // ==========================================
+        // ABA 2: LOGS (Código Original)
+        // ==========================================
         TableView<core.LogMovimentacao> tabelaLogs = new TableView<>();
         tabelaLogs.getStyleClass().addAll(Styles.STRIPED, Styles.BORDERED);
         tabelaLogs.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
         VBox.setVgrow(tabelaLogs, Priority.ALWAYS);
 
-        // Colunas
         TableColumn<core.LogMovimentacao, String> colData = new TableColumn<>("Data / Hora");
         colData.setCellValueFactory(new PropertyValueFactory<>("dataHoraFormatada"));
         colData.setMaxWidth(160);
@@ -895,29 +1142,24 @@ public class MainFX extends Application {
         TableColumn<core.LogMovimentacao, String> colTipo = new TableColumn<>("Ação");
         colTipo.setCellValueFactory(new PropertyValueFactory<>("tipoMovimentacao"));
         colTipo.setMaxWidth(100);
-        // Colore a ação para facilitar a leitura visual
         colTipo.setCellFactory(column -> new TableCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setStyle("");
-                } else {
-                    setText(item);
-                    setStyle("-fx-font-weight: bold;");
+                if (empty || item == null) { setText(null); setStyle(""); } else {
+                    setText(item); setStyle("-fx-font-weight: bold;");
                     switch (item) {
-                        case "ENTRADA" -> setTextFill(javafx.scene.paint.Color.web("#1a7f37")); // Verde
-                        case "BAIXA" -> setTextFill(javafx.scene.paint.Color.web("#cf222e")); // Vermelho
-                        case "VENDA" -> setTextFill(javafx.scene.paint.Color.web("#0969da")); // Azul
+                        case "ENTRADA" -> setTextFill(javafx.scene.paint.Color.web("#1a7f37"));
+                        case "BAIXA" -> setTextFill(javafx.scene.paint.Color.web("#cf222e"));
+                        case "VENDA" -> setTextFill(javafx.scene.paint.Color.web("#0969da"));
                     }
                 }
             }
         });
 
-        TableColumn<core.LogMovimentacao, Integer> colCod = new TableColumn<>("Cód. Prod");
+        TableColumn<core.LogMovimentacao, Integer> colCod = new TableColumn<>("Cód");
         colCod.setCellValueFactory(new PropertyValueFactory<>("codigoProduto"));
-        colCod.setMaxWidth(100);
+        colCod.setMaxWidth(80);
 
         TableColumn<core.LogMovimentacao, Integer> colQtd = new TableColumn<>("Qtd");
         colQtd.setCellValueFactory(new PropertyValueFactory<>("quantidade"));
@@ -931,28 +1173,44 @@ public class MainFX extends Application {
 
         tabelaLogs.getColumns().addAll(colData, colUser, colTipo, colCod, colQtd, colMotivo, colObs);
 
-        // --- CARREGAMENTO DOS DADOS ---
         dao.MovimentacaoDAO daoMov = new dao.MovimentacaoDAO();
         ObservableList<core.LogMovimentacao> listaLogs = FXCollections.observableArrayList(daoMov.listarHistorico());
         tabelaLogs.setItems(listaLogs);
 
-        // Botão para atualizar a lista sem precisar sair da tela
-        Button btnAtualizar = new Button("🔄 Atualizar Histórico");
-        btnAtualizar.getStyleClass().add(Styles.BUTTON_OUTLINED);
-        btnAtualizar.setOnAction(e -> listaLogs.setAll(daoMov.listarHistorico()));
+        Button btnAtualizarLogs = new Button("🔄 Atualizar Histórico");
+        btnAtualizarLogs.getStyleClass().add(Styles.BUTTON_OUTLINED);
+        btnAtualizarLogs.setOnAction(e -> listaLogs.setAll(daoMov.listarHistorico()));
+        HBox barraLogs = new HBox(btnAtualizarLogs);
+        barraLogs.setAlignment(Pos.CENTER_RIGHT);
 
-        HBox barraFerramentas = new HBox(10, btnAtualizar);
-        barraFerramentas.setAlignment(Pos.CENTER_RIGHT);
+        VBox layoutLogs = new VBox(15, barraLogs, tabelaLogs);
+        layoutLogs.setPadding(new Insets(20));
+        Tab tabLogs = new Tab("Movimentações", layoutLogs);
 
-        VBox layout = new VBox(15, lblTitulo, lblSub, barraFerramentas, tabelaLogs);
+        // --- Adiciona abas e finaliza tela ---
+        tabPane.getTabs().addAll(tabFinanceiro, tabLogs);
+
+        // Previne amassar a tabela e aplica scroll
+        tabelaFinancas.setMinHeight(400);
+        tabelaLogs.setMinHeight(400);
+
+        VBox layout = new VBox(15, lblTitulo, lblSub, tabPane);
         layout.setPadding(new Insets(40));
-        return layout;
+        layout.setStyle("-fx-background-color: transparent;");
+        layout.setMinWidth(1000);
+
+        ScrollPane scrollPane = new ScrollPane(layout);
+        scrollPane.setFitToWidth(true);
+        scrollPane.getStyleClass().add("edge-to-edge");
+        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: #ffffff;");
+
+        return scrollPane;
     }
 
     // =================================================================================
     // TELA UNIFICADA: ESTOQUE (Consulta + Entradas + Baixas)
     // =================================================================================
-    private VBox criarTelaEstoque() {
+    private ScrollPane criarTelaEstoque() {
         Label lblTitulo = new Label("Gestão de Estoque");
         lblTitulo.getStyleClass().addAll(Styles.TITLE_1);
 
@@ -963,18 +1221,28 @@ public class MainFX extends Application {
 
         // Nossas 3 funcionalidades agora vivem lado a lado de forma super limpa!
         Tab tabConsulta = new Tab("Consultar e Gerenciar", criarAbaConsulta());
-        Tab tabEntrada = new Tab("Entrada em Lote", criarFormularioEntradaLote());
+        Tab tabEntrada = new Tab("Adicionar Produtos", criarFormularioEntradaLote());
         Tab tabBaixa = new Tab("Baixa de Perdas/Ajustes", criarFormularioBaixa());
 
         tabPane.getTabs().addAll(tabConsulta, tabEntrada, tabBaixa);
 
+        tabPane.setMinHeight(650);
+
         VBox layout = new VBox(20, lblTitulo, tabPane);
         layout.setPadding(new Insets(40));
-        return layout;
+        layout.setStyle("-fx-background-color: transparent;");
+        layout.setMinWidth(1050);
+
+        ScrollPane scrollPane = new ScrollPane(layout);
+        scrollPane.setFitToWidth(true);
+        scrollPane.getStyleClass().add("edge-to-edge");
+        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: #ffffff;");
+
+        return scrollPane;
     }
 
     // =================================================================================
-    // FORMULÁRIO DE BAIXA DE ESTOQUE (Com Justificativa)
+    // FORMULÁRIO DE BAIXA DE ESTOQUE
     // =================================================================================
     private VBox criarFormularioBaixa() {
         // --- 1. ÁREA DE BUSCA ---
@@ -1015,7 +1283,7 @@ public class MainFX extends Application {
         form.addRow(1, new Label("Motivo:"), cmbMotivo);
         form.addRow(2, new Label("Observações:"), txtObservacao);
 
-        Button btnSalvar = new Button("Registrar Baixa no Banco");
+        Button btnSalvar = new Button("Registrar Baixa do Produto");
         btnSalvar.getStyleClass().addAll(Styles.DANGER, Styles.LARGE);
         btnSalvar.setMaxWidth(Double.MAX_VALUE);
 
@@ -1023,21 +1291,17 @@ public class MainFX extends Application {
         // LÓGICA DE BUSCA E SALVAMENTO
         // =================================================================
 
-        // Instanciamos os DAOs
         dao.ProdutoDAO daoProduto = new dao.ProdutoDAO();
         dao.MovimentacaoDAO daoMov = new dao.MovimentacaoDAO();
 
-        // Variável "invisível" (Array de 1 posição) para o sistema lembrar qual produto está na tela
         final Produto[] produtoSelecionado = {null};
 
-        // AÇÃO DO BOTÃO BUSCAR
         txtCod.setOnAction(e -> btnBuscar.fire());
         btnBuscar.setOnAction(e -> {
 
             try {
                 int codBusca = Integer.parseInt(txtCod.getText());
 
-                // Busca o produto (reaproveitando a lista completa do DAO para agilidade)
                 Produto pEncontrado = daoProduto.listarTodos().stream()
                         .filter(p -> p.getCodigo() == codBusca)
                         .findFirst().orElse(null);
@@ -1048,7 +1312,6 @@ public class MainFX extends Application {
                     lblNomeProduto.getStyleClass().remove(Styles.TEXT_MUTED); // Tira o tom cinza
 
                     lblEstoqueAtual.setText("Estoque Disponível: " + pEncontrado.getQntdDisp() + " un.");
-                    // Alerta visual imediato se o estoque já estiver zerado
                     if(pEncontrado.getQntdDisp() <= 0) {
                         lblEstoqueAtual.setStyle("-fx-text-fill: #cf222e; -fx-font-weight: bold;"); // Vermelho
                     } else {
@@ -1085,13 +1348,12 @@ public class MainFX extends Application {
                 String motivo = cmbMotivo.getValue();
                 String obs = txtObservacao.getText();
 
-                // Pegamos magicamente o nome de quem logou no sistema (História 11)
+                // Pegamos o nome de quem logou no sistema
                 String usuarioResponsavel = core.Sessao.getUsuario().getNomeCompleto();
 
-                // Dispara a Transação de Segurança no Banco de Dados
                 daoMov.registrarBaixa(produtoSelecionado[0].getCodigo(), qtdRemover, motivo, obs, usuarioResponsavel);
 
-                mostrarAlerta("Baixa de estoque registrada com sucesso no banco de dados!");
+                mostrarAlerta("Baixa de estoque registrada com sucesso!");
 
                 // Limpa a tela para a próxima operação
                 txtCod.clear();
@@ -1107,7 +1369,7 @@ public class MainFX extends Application {
             } catch (NumberFormatException ex) {
                 mostrarErro("Erro de Formato", "A quantidade a remover deve ser um número inteiro e maior que zero.");
             } catch (java.sql.SQLException ex) {
-                // Aqui o banco avisa se tentarmos tirar mais do que tem (a trava G7-53!)
+                // Aqui o banco avisa se tentarmos tirar mais do que tem
                 mostrarErro("Operação Bloqueada pelo Banco", ex.getMessage());
             }
         });
@@ -1121,7 +1383,7 @@ public class MainFX extends Application {
 
 
     private VBox criarFormularioEntradaLote() {
-        // --- 1. LISTA TEMPORÁRIA (Subtarefa G7-61) ---
+        // --- 1. LISTA TEMPORÁRIA ---
         // Reaproveitamos a classe ItemCarrinho para guardar o "Produto + Qtd" na memória
         ObservableList<core.ItemCarrinho> listaLote = FXCollections.observableArrayList();
         dao.ProdutoDAO daoProduto = new dao.ProdutoDAO();
@@ -1138,20 +1400,18 @@ public class MainFX extends Application {
         Button btnAdd = new Button("Adicionar à Lista");
         btnAdd.getStyleClass().addAll(Styles.ACCENT);
 
-        // Mantemos o botão de Novo Produto caso chegue algo inédito na nota fiscal
         Button btnNovo = new Button("Cadastrar Novo Produto");
         btnNovo.getStyleClass().addAll(Styles.WARNING, Styles.BUTTON_OUTLINED);
-        // Deixamos a ação dele vazia por enquanto, podemos ligar à tela de cadastro depois
 
         HBox formAdd = new HBox(10, txtCod, txtQtd, btnAdd, lblInfo, new Region(), btnNovo);
         formAdd.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(formAdd.getChildren().get(5), Priority.ALWAYS); // Empurra o btnNovo pro canto direito
 
-        // --- 3. TABELA (Subtarefa G7-62) ---
+        // --- 3. TABELA ---
         TableView<core.ItemCarrinho> tabelaLote = new TableView<>();
         tabelaLote.getStyleClass().addAll(Styles.STRIPED, Styles.BORDERED);
         tabelaLote.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
-        tabelaLote.setEditable(true); // <--- MÁGICA 1: Libera a tabela para edição!
+        tabelaLote.setEditable(true);
         VBox.setVgrow(tabelaLote, Priority.ALWAYS);
 
         TableColumn<core.ItemCarrinho, String> colCod = new TableColumn<>("Cód");
@@ -1166,7 +1426,7 @@ public class MainFX extends Application {
         colQtd.setCellValueFactory(new PropertyValueFactory<>("quantidade"));
         colQtd.setMaxWidth(250);
 
-        // Ensina a coluna a virar uma "caixinha de texto" quando clicada
+        // A coluna vira uma "caixinha de texto" quando clicada
         colQtd.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new javafx.util.converter.IntegerStringConverter()));
 
         // O que acontece quando o usuário aperta Enter após editar:
@@ -1177,23 +1437,22 @@ public class MainFX extends Application {
             if (novaQtd > 0) {
                 item.setQuantidade(novaQtd); // Salva a nova quantidade
             } else {
-                tabelaLote.refresh(); // Desfaz visualmente se ele digitar 0
+                tabelaLote.refresh();
                 mostrarErro("Atenção", "A quantidade deve ser maior que zero. Para remover o item, clique no botão ❌.");
             }
         });
 
-        // <--- MÁGICA 2: COLUNA COM O BOTÃO DE EXCLUIR --->
+        // <--- COLUNA COM O BOTÃO DE EXCLUIR --->
         TableColumn<core.ItemCarrinho, Void> colAcao = new TableColumn<>("Remover");
         colAcao.setMaxWidth(100);
         colAcao.setCellFactory(param -> new TableCell<>() {
             private final Button btnExcluir = new Button("❌");
 
             {
-                // Deixa o botão com cara de "perigo" e sem fundo
                 btnExcluir.getStyleClass().addAll(Styles.DANGER, Styles.FLAT);
                 btnExcluir.setOnAction(event -> {
                     core.ItemCarrinho item = getTableView().getItems().get(getIndex());
-                    listaLote.remove(item); // Remove da lista instantaneamente!
+                    listaLote.remove(item);
                 });
             }
 
@@ -1212,16 +1471,14 @@ public class MainFX extends Application {
         tabelaLote.getColumns().addAll(colCod, colDesc, colQtd, colAcao);
         tabelaLote.setItems(listaLote);
 
-        Button btnSalvarLote = new Button("Processar Lote de Entrada");
+        Button btnSalvarLote = new Button("Processar Entrada");
         btnSalvarLote.getStyleClass().addAll(Styles.SUCCESS, Styles.LARGE);
         btnSalvarLote.setMaxWidth(Double.MAX_VALUE);
 
         // --- 4. LÓGICA DE ADICIONAR NA LISTA ---
 
-        // Atalhos de UX (Enter para pular campo e adicionar)
         txtCod.setOnAction(e -> txtQtd.requestFocus());
         txtQtd.setOnAction(e -> btnAdd.fire());
-
         btnAdd.setOnAction(e -> {
             try {
                 int cod = Integer.parseInt(txtCod.getText());
@@ -1258,7 +1515,7 @@ public class MainFX extends Application {
                 lblInfo.setStyle("-fx-text-fill: green;");
                 txtCod.clear();
                 txtQtd.clear();
-                txtCod.requestFocus(); // Volta o cursor para o próximo bipe!
+                txtCod.requestFocus();
 
             } catch (NumberFormatException ex) {
                 lblInfo.setText("❌ Código e Quantidade inválidos.");
@@ -1279,7 +1536,7 @@ public class MainFX extends Application {
             Alert confirmacao = new Alert(Alert.AlertType.CONFIRMATION,
                     "Deseja confirmar a entrada destes " + listaLote.size() + " itens no estoque?",
                     ButtonType.YES, ButtonType.NO);
-            confirmacao.setHeaderText("Confirmar Entrada em Lote");
+            confirmacao.setHeaderText("Confirmar Entrada");
 
             confirmacao.showAndWait().ifPresent(resposta -> {
                 if (resposta == ButtonType.YES) {
@@ -1290,23 +1547,23 @@ public class MainFX extends Application {
                         // Envia a lista toda para o banco
                         daoMov.registrarEntradaLote(new java.util.ArrayList<>(listaLote), usuarioAtual);
 
-                        mostrarAlerta("Lote processado e estoque atualizado com sucesso!");
+                        mostrarAlerta("Processado e estoque atualizado com sucesso!");
 
                         // Limpa a tela para a próxima carreta de produtos
                         listaLote.clear();
                         txtCod.clear();
                         txtQtd.clear();
-                        lblInfo.setText("Lote finalizado. Aguardando novos itens...");
+                        lblInfo.setText("Finalizado. Aguardando novos itens...");
                         lblInfo.setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
                         txtCod.requestFocus();
 
                     } catch (java.sql.SQLException ex) {
-                        mostrarErro("Erro ao processar lote no banco", ex.getMessage());
+                        mostrarErro("Erro ao processar", ex.getMessage());
                     }
                 }
             });
         });
-        VBox layout = new VBox(15, new Label("Bipe ou digite os itens recebidos na nota fiscal:"), formAdd, tabelaLote, btnSalvarLote);
+        VBox layout = new VBox(15, new Label("Digite os itens recebidos na nota fiscal:"), formAdd, tabelaLote, btnSalvarLote);
         layout.setPadding(new Insets(20, 0, 0, 0));
         return layout;
     }
@@ -1314,7 +1571,7 @@ public class MainFX extends Application {
     // =================================================================================
     // TELA 3: FORNECEDORES (Nova Versão - Tabela Cheia)
     // =================================================================================
-    private VBox criarTelaFornecedores() {
+    private ScrollPane criarTelaFornecedores() {
         Label lblTitulo = new Label("Fornecedores Cadastrados");
         lblTitulo.getStyleClass().addAll(Styles.TITLE_1);
 
@@ -1344,17 +1601,12 @@ public class MainFX extends Application {
 
         // --- BOTÕES DE AÇÃO ---
 
-        // NOVO BOTÃO DE ATUALIZAR
         Button btnAtualizar = new Button("Atualizar Lista");
         btnAtualizar.getStyleClass().addAll(Styles.BUTTON_OUTLINED, Styles.LARGE);
-        btnAtualizar.setOnAction(e -> {
-            // Vai no banco, busca tudo de novo e atualiza a lista da tela na mesma hora!
-            listaFornecedores.setAll(fornecedorDAO.listarTodos());
-        });
+        btnAtualizar.setOnAction(e -> listaFornecedores.setAll(fornecedorDAO.listarTodos()));
 
         Button btnNovo = new Button("Cadastrar Fornecedor");
         btnNovo.getStyleClass().addAll(Styles.SUCCESS, Styles.LARGE);
-        // Chama a nossa nova janela (modal), passando a lista para ela se auto-atualizar
         btnNovo.setOnAction(e -> abrirModalCadastroFornecedor(listaFornecedores));
 
         Button btnExcluir = new Button("Excluir Selecionado");
@@ -1376,24 +1628,32 @@ public class MainFX extends Application {
                 if (resposta == ButtonType.YES) {
                     try {
                         fornecedorDAO.excluir(selecionado.getId());
-                        listaFornecedores.remove(selecionado); // Remove da tela
+                        listaFornecedores.remove(selecionado);
                         mostrarAlerta("Fornecedor excluído com sucesso!");
                     } catch (Exception ex) {
-                        // Se o fornecedor estiver associado a algum produto, o PostgreSQL bloqueia a exclusão
                         mostrarErro("Ação Bloqueada", "Não é possível excluir este fornecedor pois existem produtos vinculados a ele no sistema.");
                     }
                 }
             });
         });
 
-        // Colocamos o btnAtualizar ao lado do btnExcluir
         HBox barraBotoes = new HBox(15, btnAtualizar, btnExcluir, new Region(), btnNovo);
-        HBox.setHgrow(barraBotoes.getChildren().get(2), Priority.ALWAYS); // O espaçador agora é o 3º item (índice 2)
+        HBox.setHgrow(barraBotoes.getChildren().get(2), Priority.ALWAYS);
         barraBotoes.setAlignment(Pos.CENTER);
+
+        tabela.setMinHeight(400);
 
         VBox layout = new VBox(20, lblTitulo, tabela, barraBotoes);
         layout.setPadding(new Insets(40));
-        return layout;
+        layout.setStyle("-fx-background-color: transparent;");
+        layout.setMinWidth(900);
+
+        ScrollPane scrollPane = new ScrollPane(layout);
+        scrollPane.setFitToWidth(true);
+        scrollPane.getStyleClass().add("edge-to-edge");
+        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: #ffffff;");
+
+        return scrollPane;
     }
 
     // =================================================================================
@@ -1408,7 +1668,6 @@ public class MainFX extends Application {
         TextField txtNome = new TextField();
         TextField txtContato = new TextField();
 
-        // Nossas máscaras mágicas continuam funcionando aqui!
         aplicarMascaraCnpjCpf(txtCnpj);
         aplicarMascaraContato(txtContato);
 
@@ -1440,11 +1699,10 @@ public class MainFX extends Application {
 
                 fornecedorDAO.salvar(f);
 
-                // Recarrega a tabela da tela de trás magicamente!
                 listaAtual.setAll(fornecedorDAO.listarTodos());
 
                 mostrarAlerta("Fornecedor cadastrado com sucesso!");
-                stageModal.close(); // Fecha a janelinha automaticamente
+                stageModal.close();
 
             } catch (IllegalArgumentException ex) {
                 mostrarErro("Atenção", ex.getMessage());
@@ -1491,6 +1749,133 @@ public class MainFX extends Application {
     // =================================================================================
     // AJUSTES
     // =================================================================================
+
+    // =================================================================================
+    // REGRAS DE NEGÓCIO
+    // =================================================================================
+    private boolean isEstoqueBaixo(Produto p) {
+        return p.getQntdDisp() <= 5;
+    }
+
+    // Regra para o que JÁ VENCEU (Data da validade ficou para trás)
+    private boolean isVencido(Produto p) {
+        java.util.Date hoje = new java.util.Date();
+        if (p instanceof core.ProdutoPerecivel perecivel && perecivel.getDataValidade() != null) {
+            return perecivel.getDataValidade().before(hoje);
+        } else if (p instanceof core.Cosmetico cosmetico && cosmetico.getDataValidade() != null) {
+            return cosmetico.getDataValidade().before(hoje);
+        }
+        return false;
+    }
+
+    // Regra para o que ESTÁ A VENCER (Ainda não venceu, mas tá no limite de 1 ou 3 meses)
+    private boolean isVencendo(Produto p) {
+        if (isVencido(p)) return false; // Se já venceu, não entra na conta do "a vencer"!
+
+        java.util.Date hoje = new java.util.Date();
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+
+        if (p instanceof core.ProdutoPerecivel perecivel && perecivel.getDataValidade() != null) {
+            cal.setTime(hoje);
+            cal.add(java.util.Calendar.MONTH, 1);
+            return perecivel.getDataValidade().before(cal.getTime());
+        } else if (p instanceof core.Cosmetico cosmetico && cosmetico.getDataValidade() != null) {
+            cal.setTime(hoje);
+            cal.add(java.util.Calendar.MONTH, 3);
+            return cosmetico.getDataValidade().before(cal.getTime());
+        }
+        return false;
+    }
+
+    // =================================================================================
+    // MODAL DE DETALHAMENTO DO MÊS (Visão de Vendas)
+    // =================================================================================
+    private void abrirModalDetalhesMes(String mesAno) {
+        Stage stageModal = new Stage();
+        stageModal.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+        stageModal.setTitle("Detalhamento de Vendas - " + mesAno);
+
+        Label lblTitulo = new Label("Relatório de Vendas: " + mesAno);
+        lblTitulo.getStyleClass().addAll(Styles.TITLE_2);
+
+        // Tabela de Detalhes
+        TableView<DetalheVenda> tabela = new TableView<>();
+        tabela.getStyleClass().addAll(Styles.STRIPED, Styles.BORDERED);
+        tabela.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+        VBox.setVgrow(tabela, Priority.ALWAYS);
+
+        TableColumn<DetalheVenda, String> colData = new TableColumn<>("Data/Hora");
+        colData.setCellValueFactory(new PropertyValueFactory<>("dataHora"));
+
+        TableColumn<DetalheVenda, String> colProd = new TableColumn<>("Produto");
+        colProd.setCellValueFactory(new PropertyValueFactory<>("produto"));
+
+        TableColumn<DetalheVenda, Integer> colQtd = new TableColumn<>("Qtd");
+        colQtd.setCellValueFactory(new PropertyValueFactory<>("qtd"));
+        colQtd.setMaxWidth(80);
+
+        TableColumn<DetalheVenda, String> colSub = new TableColumn<>("Faturamento");
+        colSub.setCellValueFactory(new PropertyValueFactory<>("subtotalFormatado"));
+
+        TableColumn<DetalheVenda, String> colLucro = new TableColumn<>("Lucro Gerado");
+        colLucro.setCellValueFactory(new PropertyValueFactory<>("lucroFormatado"));
+        colLucro.setStyle("-fx-text-fill: #1a7f37; -fx-font-weight: bold;");
+
+        tabela.getColumns().addAll(colData, colProd, colQtd, colSub, colLucro);
+
+        // Busca e cruza os dados do Banco
+        dao.MovimentacaoDAO daoMov = new dao.MovimentacaoDAO();
+        dao.ProdutoDAO daoProd = new dao.ProdutoDAO();
+        List<core.LogMovimentacao> historico = daoMov.listarHistorico();
+        List<core.Produto> produtos = daoProd.listarTodos();
+
+        List<DetalheVenda> listaDetalhes = new java.util.ArrayList<>();
+        double totalFaturamento = 0;
+        double totalLucro = 0;
+
+        java.time.format.DateTimeFormatter fmtStr = java.time.format.DateTimeFormatter.ofPattern("MM/yyyy");
+
+        for (core.LogMovimentacao log : historico) {
+            // Filtra só o que foi VENDA e que não tem data vazia
+            if (log.getDataHora() == null || !"VENDA".equals(log.getTipoMovimentacao())) continue;
+
+            java.time.LocalDate dataLog = log.getDataHora().toLocalDateTime().toLocalDate();
+
+            // Verifica se a venda pertence ao mês que o usuário clicou
+            if (dataLog.format(fmtStr).equals(mesAno)) {
+                core.Produto p = produtos.stream().filter(prod -> prod.getCodigo() == log.getCodigoProduto()).findFirst().orElse(null);
+                if (p != null) {
+                    double sub = p.getValorUnitVenda() * log.getQuantidade();
+                    double luc = p.getLucroUnitarioCalculado() * log.getQuantidade();
+                    totalFaturamento += sub;
+                    totalLucro += luc;
+
+                    listaDetalhes.add(new DetalheVenda(log.getDataHoraFormatada(), p.getDescricao(), log.getQuantidade(), sub, luc));
+                }
+            }
+        }
+
+        tabela.setItems(FXCollections.observableArrayList(listaDetalhes));
+
+        // Rodapé com Totais Finais
+        Label lblTotalFat = new Label("Total Faturado: " + formatarValorAbreviado(totalFaturamento));
+        lblTotalFat.getStyleClass().addAll(Styles.TITLE_3);
+
+        Label lblTotalLucro = new Label("  |  Lucro: " + formatarValorAbreviado(totalLucro));
+        lblTotalLucro.getStyleClass().addAll(Styles.TITLE_3);
+        lblTotalLucro.setStyle("-fx-text-fill: #1a7f37;"); // Deixa verdinho
+
+        HBox rodape = new HBox(10, lblTotalFat, lblTotalLucro);
+        rodape.setAlignment(Pos.CENTER_RIGHT);
+        rodape.setPadding(new Insets(10, 0, 0, 0));
+
+        VBox layout = new VBox(15, lblTitulo, tabela, rodape);
+        layout.setPadding(new Insets(20));
+
+        Scene scene = new Scene(layout, 750, 500);
+        stageModal.setScene(scene);
+        stageModal.showAndWait();
+    }
 
     public static String formatarValorAbreviado(double valor) {
         if (valor < 1_000) {
@@ -1638,14 +2023,12 @@ public class MainFX extends Application {
             // Divide por 100 para criar os centavos matematicamente
             double valor = Double.parseDouble(apenasNumeros) / 100;
 
-            // Usa o formatador nativo do Java para a moeda do Brasil (R$ 1.500,00)
             java.text.NumberFormat formatoMoeda = java.text.NumberFormat.getCurrencyInstance(java.util.Locale.of("pt", "BR"));
             String textoFormatado = formatoMoeda.format(valor);
 
-            // Joga para a tela
             javafx.application.Platform.runLater(() -> {
                 textField.setText(textoFormatado);
-                textField.positionCaret(textoFormatado.length()); // Mantém o cursor no fim
+                textField.positionCaret(textoFormatado.length());
                 isUpdating[0] = false;
             });
         });

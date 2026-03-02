@@ -28,7 +28,7 @@ public class ItemCarrinho {
     public Produto getProduto() { return produto; }
     public double getSubtotal() { return subtotal; }
 
-    // Metodo para somar itens iguais bipados repetidamente
+    // Metodo para somar itens iguais repetidamente
     public void adicionarQuantidade(int qtd) {
         this.quantidade += qtd;
         this.subtotal = this.produto.getValorUnitVenda() * this.quantidade;

@@ -32,8 +32,9 @@ public class LogMovimentacao {
     public String getMotivo() { return motivo; }
     public String getObservacao() { return observacao; }
     public String getUsuario() { return usuario; }
+    public Timestamp getDataHora() { return dataHora; }
 
-    // Converte o Timestamp do banco para uma String bonita (ex: 25/02/2026 14:30:00)
+    // Converte o Timestamp do banco (ex: 25/02/2026 14:30:00)
     public String getDataHoraFormatada() {
         if (dataHora == null) return "-";
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");

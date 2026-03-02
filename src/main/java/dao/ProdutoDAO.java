@@ -7,11 +7,9 @@ import java.util.List;
 
 public class ProdutoDAO {
 
-    // Metodo para BUSCAR TODOS os produtos (Select)
     public List<Produto> listarTodos() {
         List<Produto> lista = new ArrayList<>();
 
-        // Mantemos o JOIN para trazer os dados do fornecedor
         String sql = "SELECT p.*, f.nome as f_nome, f.cnpj_cpf as f_cnpj, f.contato as f_contato " +
                 "FROM produtos p " +
                 "INNER JOIN fornecedores f ON p.fornecedor_id = f.id " +
@@ -73,6 +71,13 @@ public class ProdutoDAO {
         return lista;
     }
 
+    public Produto buscarPorCodigo(int cod) {
+        return listarTodos().stream()
+                .filter(p -> p.getCodigo() == cod)
+                .findFirst()
+                .orElse(null);
+    }
+
     // Metodo para SALVAR um novo produto (Insert)
     public void salvar(Produto p) throws SQLException {
         String sql = "INSERT INTO produtos (codigo, descricao, categoria, quantidade, valor_venda, percentual_lucro, fornecedor_id, tipo_produto, data_validade, fabricante, meses_garantia) " +
@@ -84,37 +89,88 @@ public class ProdutoDAO {
             // 1. Dados Comuns
             stmt.setInt(1, p.getCodigo());
             stmt.setString(2, p.getDescricao());
-            // Se sua classe Produto não tiver getCategoria(), use uma string fixa ou crie o getter
-            stmt.setString(3, "Geral"); // Ajuste se tiver p.getCategoria()
+            stmt.setString(3, p.getCategoria());
             stmt.setInt(4, p.getQntdDisp());
             stmt.setDouble(5, p.getValorUnitVenda());
             stmt.setDouble(6, p.getPercentualLucro());
-            stmt.setInt(7, p.getFornecedor().getId()); // <--- Aqui usamos o ID novo!
+            stmt.setInt(7, p.getFornecedor().getId());
 
-            // 2. Dados Específicos (Polimorfismo no SQL)
-            if (p instanceof Cosmetico c) {
-                stmt.setString(8, "COSMETICO");
-                stmt.setDate(9, new java.sql.Date(c.getDataValidade().getTime()));
-                stmt.setString(10, c.getFabricante());
-                stmt.setNull(11, java.sql.Types.INTEGER); // Garantia é null
-            }
-            else if (p instanceof Eletronico e) {
-                stmt.setString(8, "ELETRONICO");
-                stmt.setNull(9, java.sql.Types.DATE);     // Validade é null
-                stmt.setNull(10, java.sql.Types.VARCHAR); // Fabricante é null
-                stmt.setInt(11, e.getDataGarantia() != null ? 12 : 0); // Simplificação: Salvando meses aproximados
-            }
-            else if (p instanceof ProdutoPerecivel pp) {
-                stmt.setString(8, "PERECIVEL");
-                stmt.setDate(9, new java.sql.Date(pp.getDataValidade().getTime()));
-                stmt.setNull(10, java.sql.Types.VARCHAR);
-                stmt.setNull(11, java.sql.Types.INTEGER);
+            // 2. Dados Específicos
+            switch (p) {
+                case Cosmetico c -> {
+                    stmt.setString(8, "COSMETICO");
+                    stmt.setDate(9, new Date(c.getDataValidade().getTime()));
+                    stmt.setString(10, c.getFabricante());
+                    stmt.setNull(11, Types.INTEGER); // Garantia é null
+                }
+                case Eletronico e -> {
+                    stmt.setString(8, "ELETRONICO");
+                    stmt.setNull(9, Types.DATE);     // Validade é null
+
+                    stmt.setNull(10, Types.VARCHAR); // Fabricante é null
+
+                    stmt.setInt(11, e.getDataGarantia() != null ? 12 : 0); // Simplificação: Salvando meses aproximados
+                }
+                case ProdutoPerecivel pp -> {
+                    stmt.setString(8, "PERECIVEL");
+                    stmt.setDate(9, new Date(pp.getDataValidade().getTime()));
+                    stmt.setNull(10, Types.VARCHAR);
+                    stmt.setNull(11, Types.INTEGER);
+                }
+                default -> {
+                }
             }
 
             stmt.executeUpdate();
-            System.out.println("Produto salvo com sucesso no banco!");
+            System.out.println("Produto salvo com sucesso!");
         }
     }
+
+    // Metodo para ATUALIZAR um produto existente (Update)
+    public void atualizar(Produto p) throws SQLException {
+        String sql = "UPDATE produtos SET descricao = ?, categoria = ?, quantidade = ?, valor_venda = ?, percentual_lucro = ?, fornecedor_id = ?, data_validade = ?, fabricante = ?, meses_garantia = ? WHERE codigo = ?";
+
+        try (Connection conn = ConexaoBD.conectar();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, p.getDescricao());
+            stmt.setString(2, p.getCategoria());
+            stmt.setInt(3, p.getQntdDisp());
+            stmt.setDouble(4, p.getValorUnitVenda());
+            stmt.setDouble(5, p.getPercentualLucro());
+            stmt.setInt(6, p.getFornecedor().getId());
+
+            switch (p) {
+                case Cosmetico c -> {
+                    stmt.setDate(7, new Date(c.getDataValidade().getTime()));
+                    stmt.setString(8, c.getFabricante());
+                    stmt.setNull(9, Types.INTEGER);
+                }
+                case Eletronico e -> {
+                    stmt.setNull(7, Types.DATE);
+                    stmt.setNull(8, Types.VARCHAR);
+                    stmt.setInt(9, e.getDataGarantia() != null ? 12 : 0);
+                }
+                case ProdutoPerecivel pp -> {
+                    stmt.setDate(7, new Date(pp.getDataValidade().getTime()));
+                    stmt.setNull(8, Types.VARCHAR);
+                    stmt.setNull(9, Types.INTEGER);
+                }
+                default -> {
+                    stmt.setNull(7, Types.DATE);
+                    stmt.setNull(8, Types.VARCHAR);
+                    stmt.setNull(9, Types.INTEGER);
+                }
+            }
+
+            // O Código é a nossa chave de busca!
+            stmt.setInt(10, p.getCodigo());
+
+            stmt.executeUpdate();
+            System.out.println("Produto atualizado com sucesso!");
+        }
+    }
+
     // Metodo para EXCLUIR um produto do banco
     public void excluir(int codigo) throws SQLException {
         String sql = "DELETE FROM produtos WHERE codigo = ?";
@@ -124,7 +180,7 @@ public class ProdutoDAO {
 
             stmt.setInt(1, codigo);
             stmt.executeUpdate();
-            System.out.println("Produto excluído com sucesso do banco!");
+            System.out.println("Produto excluído com sucesso!");
         }
     }
 }
