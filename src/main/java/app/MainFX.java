@@ -410,11 +410,23 @@ public class MainFX extends Application {
                 }
             });
         });
+        Button btnExportar = new Button("📥 Exportar Relatório");
+        btnExportar.getStyleClass().addAll(Styles.BUTTON_OUTLINED);
+        btnExportar.setOnAction(e -> {
+            java.io.File arquivo = escolherArquivoSalvar("Relatorio_Estoque"); // Deixe sem extensão aqui!
+            if (arquivo != null) {
+                if (arquivo.getName().toLowerCase().endsWith(".pdf")) {
+                    exportarProdutosPDF(tabela.getItems(), arquivo);
+                } else {
+                    exportarProdutosCSV(tabela.getItems(), arquivo);
+                }
+            }
+        });
 
         // 3. MONTAMOS A BARRA DE FERRAMENTAS
         Region espacador = new Region();
         HBox.setHgrow(espacador, Priority.ALWAYS);
-        HBox barraFerramentas = new HBox(10, txtBusca, cmbOrdenacao, btnAtualizar, espacador, btnEditar, btnExcluir, btnNovo);
+        HBox barraFerramentas = new HBox(10, txtBusca, cmbOrdenacao, btnAtualizar, btnExportar, espacador, btnEditar, btnExcluir, btnNovo);
         barraFerramentas.setAlignment(Pos.CENTER_LEFT);
 
         // 3. TABELA (SortedList)
@@ -1056,11 +1068,47 @@ public class MainFX extends Application {
         colLucro.setCellValueFactory(new PropertyValueFactory<>("lucroTotalFormatado"));
         colLucro.setStyle("-fx-text-fill: #1a7f37; -fx-font-weight: bold;"); // Verde
 
-        TableColumn<ResumoMes, String> colPrejuizo = new TableColumn<>("Prejuízo (Baixas/Vencidos)");
+        TableColumn<core.ResumoMes, String> colPrejuizo = new TableColumn<>("Prejuízo (Baixas/Vencidos)");
         colPrejuizo.setCellValueFactory(new PropertyValueFactory<>("prejuizoFormatado"));
         colPrejuizo.setStyle("-fx-text-fill: #cf222e; -fx-font-weight: bold;"); // Vermelho
 
-        tabelaFinancas.getColumns().addAll(colMes, colQtdVendas, colTotalVendido, colLucro, colPrejuizo);
+        // <--- NOVA COLUNA DE EXPORTAR NA TABELA --->
+        TableColumn<core.ResumoMes, Void> colAcao = new TableColumn<>("Exportar Detalhes");
+        colAcao.setMaxWidth(130);
+        colAcao.setCellFactory(param -> new TableCell<>() {
+            private final Button btnExportar = new Button("📥 Salvar");
+
+            {
+                btnExportar.getStyleClass().addAll(Styles.BUTTON_OUTLINED, Styles.SMALL);
+                btnExportar.setOnAction(event -> {
+                    core.ResumoMes mesRow = getTableView().getItems().get(getIndex());
+                    String mesAno = mesRow.getMesAno();
+                    // O Windows não aceita "/" no nome do arquivo, então trocamos por "_" (ex: 03_2026)
+                    java.io.File arquivo = escolherArquivoSalvar("Vendas_Mes_" + mesAno.replace("/", "_"));
+
+                    if (arquivo != null) {
+                        if (arquivo.getName().toLowerCase().endsWith(".pdf")) {
+                            exportarDetalhesMesPDF(mesAno, arquivo);
+                        } else {
+                            exportarDetalhesMesCSV(mesAno, arquivo);
+                        }
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    setGraphic(btnExportar);
+                    setAlignment(Pos.CENTER);
+                }
+            }
+        });
+
+        tabelaFinancas.getColumns().addAll(colMes, colQtdVendas, colTotalVendido, colLucro, colPrejuizo, colAcao);
 
         tabelaFinancas.setRowFactory(tv -> {
             TableRow<core.ResumoMes> row = new TableRow<>();
@@ -1173,19 +1221,95 @@ public class MainFX extends Application {
 
         tabelaLogs.getColumns().addAll(colData, colUser, colTipo, colCod, colQtd, colMotivo, colObs);
 
-        dao.MovimentacaoDAO daoMov = new dao.MovimentacaoDAO();
-        ObservableList<core.LogMovimentacao> listaLogs = FXCollections.observableArrayList(daoMov.listarHistorico());
-        tabelaLogs.setItems(listaLogs);
 
+        // ==========================================
+        // LÓGICA DE FILTRAGEM E DADOS
+        // ==========================================
+        dao.MovimentacaoDAO daoMov = new dao.MovimentacaoDAO();
+        ObservableList<core.LogMovimentacao> masterLogs = FXCollections.observableArrayList(daoMov.listarHistorico());
+
+        // 1. Criamos a lista filtrável e associamos à tabela
+        FilteredList<core.LogMovimentacao> filteredLogs = new FilteredList<>(masterLogs, p -> true);
+        tabelaLogs.setItems(filteredLogs);
+
+        // 2. Componentes de Filtro de Data
+        DatePicker dpInicio = new DatePicker();
+        dpInicio.setPromptText("Data Início");
+        dpInicio.setPrefWidth(120);
+
+        DatePicker dpFim = new DatePicker();
+        dpFim.setPromptText("Data Fim");
+        dpFim.setPrefWidth(120);
+
+        Button btnFiltrar = new Button("🔍 Filtrar");
+        btnFiltrar.getStyleClass().add(Styles.ACCENT);
+
+        Button btnLimpar = new Button("Limpar");
+        btnLimpar.getStyleClass().add(Styles.BUTTON_OUTLINED);
+
+        // 3. Ação de Filtrar
+        btnFiltrar.setOnAction(e -> {
+            java.time.LocalDate inicio = dpInicio.getValue();
+            java.time.LocalDate fim = dpFim.getValue();
+
+            filteredLogs.setPredicate(log -> {
+                if (inicio == null && fim == null) return true; // Sem filtro
+                if (log.getDataHora() == null) return false;
+
+                java.time.LocalDate dataLog = log.getDataHora().toLocalDateTime().toLocalDate();
+
+                if (inicio != null && dataLog.isBefore(inicio)) return false;
+                return fim == null || !dataLog.isAfter(fim);
+            });
+        });
+
+        // 4. Ação de Limpar Filtro
+        btnLimpar.setOnAction(e -> {
+            dpInicio.setValue(null);
+            dpFim.setValue(null);
+            filteredLogs.setPredicate(p -> true); // Mostra tudo novamente
+        });
+
+        // ==========================================
+        // BOTÕES DE AÇÃO (ATUALIZAR E EXPORTAR)
+        // ==========================================
         Button btnAtualizarLogs = new Button("🔄 Atualizar Histórico");
         btnAtualizarLogs.getStyleClass().add(Styles.BUTTON_OUTLINED);
-        btnAtualizarLogs.setOnAction(e -> listaLogs.setAll(daoMov.listarHistorico()));
-        HBox barraLogs = new HBox(btnAtualizarLogs);
-        barraLogs.setAlignment(Pos.CENTER_RIGHT);
+        btnAtualizarLogs.setOnAction(e -> {
+            masterLogs.setAll(daoMov.listarHistorico());
+            btnLimpar.fire();
+        });
 
-        VBox layoutLogs = new VBox(15, barraLogs, tabelaLogs);
+        Button btnExportarLogs = new Button("📥 Exportar Logs");
+        btnExportarLogs.getStyleClass().add(Styles.BUTTON_OUTLINED);
+        btnExportarLogs.setOnAction(e -> {
+            java.io.File arquivo = escolherArquivoSalvar("Relatório_Movimentacoes");
+            if (arquivo != null) {
+                if (arquivo.getName().toLowerCase().endsWith(".pdf")) {
+                    exportarLogsPDF(tabelaLogs.getItems(), arquivo);
+                } else {
+                    exportarLogsCSV(tabelaLogs.getItems(), arquivo);
+                }
+            }
+        });
+
+        // ==========================================
+        // MONTAGEM DO CABEÇALHO DA ABA
+        // ==========================================
+        HBox barraFiltro = new HBox(10, new Label("Período:"), dpInicio, new Label("até"), dpFim, btnFiltrar, btnLimpar);
+        barraFiltro.setAlignment(Pos.CENTER_LEFT);
+
+        HBox barraAcoes = new HBox(10, btnExportarLogs, btnAtualizarLogs);
+        barraAcoes.setAlignment(Pos.CENTER_RIGHT);
+
+        BorderPane headerLogs = new BorderPane();
+        headerLogs.setLeft(barraFiltro);
+        headerLogs.setRight(barraAcoes);
+        headerLogs.setPadding(new Insets(0, 0, 10, 0));
+
+        VBox layoutLogs = new VBox(10, headerLogs, tabelaLogs);
         layoutLogs.setPadding(new Insets(20));
-        Tab tabLogs = new Tab("Movimentações", layoutLogs);
+        Tab tabLogs = new Tab("Relatório de Movimentações", layoutLogs);
 
         // --- Adiciona abas e finaliza tela ---
         tabPane.getTabs().addAll(tabFinanceiro, tabLogs);
@@ -1609,6 +1733,19 @@ public class MainFX extends Application {
         btnNovo.getStyleClass().addAll(Styles.SUCCESS, Styles.LARGE);
         btnNovo.setOnAction(e -> abrirModalCadastroFornecedor(listaFornecedores));
 
+        Button btnExportar = new Button("📥 Exportar Lista");
+        btnExportar.getStyleClass().addAll(Styles.BUTTON_OUTLINED, Styles.LARGE);
+        btnExportar.setOnAction(e -> {
+            java.io.File arquivo = escolherArquivoSalvar("Relatorio_Fornecedores");
+            if (arquivo != null) {
+                if (arquivo.getName().toLowerCase().endsWith(".pdf")) {
+                    exportarFornecedoresPDF(tabela.getItems(), arquivo);
+                } else {
+                    exportarFornecedoresCSV(tabela.getItems(), arquivo);
+                }
+            }
+        });
+
         Button btnExcluir = new Button("Excluir Selecionado");
         btnExcluir.getStyleClass().addAll(Styles.DANGER, Styles.LARGE);
         btnExcluir.setOnAction(e -> {
@@ -1637,8 +1774,8 @@ public class MainFX extends Application {
             });
         });
 
-        HBox barraBotoes = new HBox(15, btnAtualizar, btnExcluir, new Region(), btnNovo);
-        HBox.setHgrow(barraBotoes.getChildren().get(2), Priority.ALWAYS);
+        HBox barraBotoes = new HBox(15, btnAtualizar, btnExportar, btnExcluir, new Region(), btnNovo);
+        HBox.setHgrow(barraBotoes.getChildren().get(4), Priority.ALWAYS);
         barraBotoes.setAlignment(Pos.CENTER);
 
         tabela.setMinHeight(400);
@@ -1747,47 +1884,6 @@ public class MainFX extends Application {
     }
 
     // =================================================================================
-    // AJUSTES
-    // =================================================================================
-
-    // =================================================================================
-    // REGRAS DE NEGÓCIO
-    // =================================================================================
-    private boolean isEstoqueBaixo(Produto p) {
-        return p.getQntdDisp() <= 5;
-    }
-
-    // Regra para o que JÁ VENCEU (Data da validade ficou para trás)
-    private boolean isVencido(Produto p) {
-        java.util.Date hoje = new java.util.Date();
-        if (p instanceof core.ProdutoPerecivel perecivel && perecivel.getDataValidade() != null) {
-            return perecivel.getDataValidade().before(hoje);
-        } else if (p instanceof core.Cosmetico cosmetico && cosmetico.getDataValidade() != null) {
-            return cosmetico.getDataValidade().before(hoje);
-        }
-        return false;
-    }
-
-    // Regra para o que ESTÁ A VENCER (Ainda não venceu, mas tá no limite de 1 ou 3 meses)
-    private boolean isVencendo(Produto p) {
-        if (isVencido(p)) return false; // Se já venceu, não entra na conta do "a vencer"!
-
-        java.util.Date hoje = new java.util.Date();
-        java.util.Calendar cal = java.util.Calendar.getInstance();
-
-        if (p instanceof core.ProdutoPerecivel perecivel && perecivel.getDataValidade() != null) {
-            cal.setTime(hoje);
-            cal.add(java.util.Calendar.MONTH, 1);
-            return perecivel.getDataValidade().before(cal.getTime());
-        } else if (p instanceof core.Cosmetico cosmetico && cosmetico.getDataValidade() != null) {
-            cal.setTime(hoje);
-            cal.add(java.util.Calendar.MONTH, 3);
-            return cosmetico.getDataValidade().before(cal.getTime());
-        }
-        return false;
-    }
-
-    // =================================================================================
     // MODAL DE DETALHAMENTO DO MÊS (Visão de Vendas)
     // =================================================================================
     private void abrirModalDetalhesMes(String mesAno) {
@@ -1875,6 +1971,385 @@ public class MainFX extends Application {
         Scene scene = new Scene(layout, 750, 500);
         stageModal.setScene(scene);
         stageModal.showAndWait();
+    }
+
+    // =================================================================================
+    // MÉTODOS DE EXPORTAÇÃO (CSV E PDF)
+    // =================================================================================
+
+    private java.io.File escolherArquivoSalvar(String nomeSugerido) {
+        javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+        fileChooser.setTitle("Salvar Relatório");
+        fileChooser.setInitialFileName(nomeSugerido);
+        fileChooser.getExtensionFilters().addAll(
+                new javafx.stage.FileChooser.ExtensionFilter("Documento PDF (.pdf)", "*.pdf"),
+                new javafx.stage.FileChooser.ExtensionFilter("Planilha Excel (.csv)", "*.csv")
+        );
+        return fileChooser.showSaveDialog(rootLayout.getScene().getWindow());
+    }
+
+    // --- 1. EXPORTAÇÃO CSV (Com correção de acentos pro Excel) ---
+    private void exportarProdutosCSV(List<Produto> produtos, java.io.File file) {
+        try (java.io.PrintWriter writer = new java.io.PrintWriter(new java.io.FileWriter(file, java.nio.charset.StandardCharsets.UTF_8))) {
+            writer.write('\ufeff'); // A Mágica do BOM: Força o Excel a ler os acentos (UTF-8) corretamente!
+            writer.println("Codigo;Descricao;Categoria;Origem;Qtd_Estoque;Valor_Venda;Lucro_Unitario");
+
+            for (Produto p : produtos) {
+                String origem = p instanceof Cosmetico ? ((Cosmetico) p).getFabricante() : p.getFornecedor().getNome();
+                writer.printf("%d;%s;%s;%s;%d;%.2f;%.2f%n",
+                        p.getCodigo(), p.getDescricao(), p.getCategoria(), origem,
+                        p.getQntdDisp(), p.getValorUnitVenda(), p.getLucroUnitarioCalculado());
+            }
+            mostrarAlerta("Planilha CSV exportada com sucesso!");
+        } catch (Exception e) {
+            mostrarErro("Erro", "Falha ao salvar CSV: " + e.getMessage());
+        }
+    }
+
+    private void exportarFornecedoresCSV(List<Fornecedor> fornecedores, java.io.File file) {
+        try (java.io.PrintWriter writer = new java.io.PrintWriter(new java.io.FileWriter(file, java.nio.charset.StandardCharsets.UTF_8))) {
+            writer.write('\ufeff');
+            writer.println("ID;Razao_Social;CNPJ_CPF;Contato");
+            for (Fornecedor f : fornecedores) {
+                writer.printf("%d;%s;%s;%s%n", f.getId(), f.getNome(), f.getCnpjCpf(), f.getContato());
+            }
+            mostrarAlerta("Planilha CSV exportada com sucesso!");
+        } catch (Exception e) {
+            mostrarErro("Erro", "Falha ao salvar CSV: " + e.getMessage());
+        }
+    }
+
+    // --- 2. EXPORTAÇÃO PDF (Relatório Lindo e Formatado) ---
+    private void exportarProdutosPDF(List<Produto> produtos, java.io.File file) {
+        try {
+            // Cria um documento PDF (Página A4 deitada/Landscape para caber as colunas)
+            com.lowagie.text.Document document = new com.lowagie.text.Document(com.lowagie.text.PageSize.A4.rotate());
+            com.lowagie.text.pdf.PdfWriter.getInstance(document, new java.io.FileOutputStream(file));
+            document.open();
+
+            // Título
+            com.lowagie.text.Font fontTitulo = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA_BOLD, 18);
+            com.lowagie.text.Paragraph titulo = new com.lowagie.text.Paragraph("Relatório de Produtos em Estoque", fontTitulo);
+            titulo.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+            titulo.setSpacingAfter(20);
+            document.add(titulo);
+
+            // Tabela Responsiva
+            com.lowagie.text.pdf.PdfPTable table = new com.lowagie.text.pdf.PdfPTable(7);
+            table.setWidthPercentage(100);
+            // Largura proporcional de cada coluna para não cortar texto
+            table.setWidths(new float[]{1f, 3f, 2f, 2.5f, 1f, 1.5f, 1.5f});
+
+            // Cabeçalhos (Fundo cinza e negrito)
+            String[] headers = {"Cód", "Descrição", "Categoria", "Fabricante/Forn.", "Qtd", "Vlr. Venda", "Lucro Estim."};
+            com.lowagie.text.Font fontCabecalho = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA_BOLD, 11);
+            for (String header : headers) {
+                com.lowagie.text.pdf.PdfPCell cell = new com.lowagie.text.pdf.PdfPCell(new com.lowagie.text.Phrase(header, fontCabecalho));
+                cell.setBackgroundColor(java.awt.Color.LIGHT_GRAY);
+                cell.setHorizontalAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+                cell.setPadding(5);
+                table.addCell(cell);
+            }
+
+            // Inserindo os Dados
+            com.lowagie.text.Font fontDados = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA, 10);
+            for (Produto p : produtos) {
+                String origem = p instanceof Cosmetico ? ((Cosmetico) p).getFabricante() : p.getFornecedor().getNome();
+
+                table.addCell(new com.lowagie.text.Phrase(String.valueOf(p.getCodigo()), fontDados));
+                table.addCell(new com.lowagie.text.Phrase(p.getDescricao(), fontDados));
+                table.addCell(new com.lowagie.text.Phrase(p.getCategoria(), fontDados));
+                table.addCell(new com.lowagie.text.Phrase(origem, fontDados));
+
+                // Centraliza a quantidade
+                com.lowagie.text.pdf.PdfPCell cellQtd = new com.lowagie.text.pdf.PdfPCell(new com.lowagie.text.Phrase(String.valueOf(p.getQntdDisp()), fontDados));
+                cellQtd.setHorizontalAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+                table.addCell(cellQtd);
+
+                table.addCell(new com.lowagie.text.Phrase(String.format("R$ %.2f", p.getValorUnitVenda()), fontDados));
+                table.addCell(new com.lowagie.text.Phrase(String.format("R$ %.2f", p.getLucroUnitarioCalculado()), fontDados));
+            }
+
+            document.add(table);
+            document.close();
+            mostrarAlerta("Relatório em PDF exportado com sucesso!");
+
+        } catch (Exception e) {
+            mostrarErro("Erro", "Falha ao gerar o PDF: " + e.getMessage());
+        }
+    }
+
+    private void exportarFornecedoresPDF(List<Fornecedor> fornecedores, java.io.File file) {
+        try {
+            com.lowagie.text.Document document = new com.lowagie.text.Document(com.lowagie.text.PageSize.A4);
+            com.lowagie.text.pdf.PdfWriter.getInstance(document, new java.io.FileOutputStream(file));
+            document.open();
+
+            com.lowagie.text.Font fontTitulo = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA_BOLD, 18);
+            com.lowagie.text.Paragraph titulo = new com.lowagie.text.Paragraph("Lista de Fornecedores", fontTitulo);
+            titulo.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+            titulo.setSpacingAfter(20);
+            document.add(titulo);
+
+            com.lowagie.text.pdf.PdfPTable table = new com.lowagie.text.pdf.PdfPTable(4);
+            table.setWidthPercentage(100);
+            table.setWidths(new float[]{1f, 3f, 2f, 2.5f});
+
+            String[] headers = {"ID", "Razão Social", "CNPJ/CPF", "Contato"};
+            com.lowagie.text.Font fontCabecalho = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA_BOLD, 11);
+            for (String header : headers) {
+                com.lowagie.text.pdf.PdfPCell cell = new com.lowagie.text.pdf.PdfPCell(new com.lowagie.text.Phrase(header, fontCabecalho));
+                cell.setBackgroundColor(java.awt.Color.LIGHT_GRAY);
+                cell.setHorizontalAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+                cell.setPadding(5);
+                table.addCell(cell);
+            }
+
+            com.lowagie.text.Font fontDados = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA, 10);
+            for (Fornecedor f : fornecedores) {
+                table.addCell(new com.lowagie.text.Phrase(String.valueOf(f.getId()), fontDados));
+                table.addCell(new com.lowagie.text.Phrase(f.getNome(), fontDados));
+                table.addCell(new com.lowagie.text.Phrase(f.getCnpjCpf(), fontDados));
+                table.addCell(new com.lowagie.text.Phrase(f.getContato(), fontDados));
+            }
+
+            document.add(table);
+            document.close();
+            mostrarAlerta("Lista em PDF exportada com sucesso!");
+
+        } catch (Exception e) {
+            mostrarErro("Erro", "Falha ao gerar o PDF: " + e.getMessage());
+        }
+
+    }
+    // --- 3. EXPORTAÇÃO DE LOGS ---
+    private void exportarLogsCSV(List<core.LogMovimentacao> logs, java.io.File file) {
+        try (java.io.PrintWriter writer = new java.io.PrintWriter(new java.io.FileWriter(file, java.nio.charset.StandardCharsets.UTF_8))) {
+            writer.write('\ufeff');
+            writer.println("Data_Hora;Usuario;Acao;Cod_Produto;Produto;Qtd;Motivo;Observacoes");
+            dao.ProdutoDAO daoProd = new dao.ProdutoDAO();
+            List<Produto> todosProdutos = daoProd.listarTodos(); // Busca uma vez só para ficar rápido
+
+            for (core.LogMovimentacao log : logs) {
+                Produto p = todosProdutos.stream().filter(prod -> prod.getCodigo() == log.getCodigoProduto()).findFirst().orElse(null);
+                String nomeProd = (p != null) ? p.getDescricao() : "Desconhecido";
+
+                writer.printf("%s;%s;%s;%d;%s;%d;%s;%s%n",
+                        log.getDataHoraFormatada(), log.getUsuario(), log.getTipoMovimentacao(),
+                        log.getCodigoProduto(), nomeProd, log.getQuantidade(),
+                        log.getMotivo(), log.getObservacao());
+            }
+            mostrarAlerta("Planilha de Logs exportada com sucesso!");
+        } catch (Exception e) {
+            mostrarErro("Erro", "Falha ao salvar CSV: " + e.getMessage());
+        }
+    }
+
+    private void exportarLogsPDF(List<core.LogMovimentacao> logs, java.io.File file) {
+        try {
+            com.lowagie.text.Document document = new com.lowagie.text.Document(com.lowagie.text.PageSize.A4.rotate());
+            com.lowagie.text.pdf.PdfWriter.getInstance(document, new java.io.FileOutputStream(file));
+            document.open();
+
+            com.lowagie.text.Font fontTitulo = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA_BOLD, 18);
+            com.lowagie.text.Paragraph titulo = new com.lowagie.text.Paragraph("Relatório de Movimentações", fontTitulo);
+            titulo.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+            titulo.setSpacingAfter(20);
+            document.add(titulo);
+
+            com.lowagie.text.pdf.PdfPTable table = new com.lowagie.text.pdf.PdfPTable(8);
+            table.setWidthPercentage(100);
+            table.setWidths(new float[]{1.5f, 1.5f, 1f, 0.8f, 2f, 0.8f, 1.5f, 2f});
+
+            String[] headers = {"Data/Hora", "Usuário", "Ação", "Cód", "Produto", "Qtd", "Motivo", "Observações"};
+            com.lowagie.text.Font fontCabecalho = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA_BOLD, 10);
+            for (String header : headers) {
+                com.lowagie.text.pdf.PdfPCell cell = new com.lowagie.text.pdf.PdfPCell(new com.lowagie.text.Phrase(header, fontCabecalho));
+                cell.setBackgroundColor(java.awt.Color.LIGHT_GRAY);
+                cell.setHorizontalAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+                table.addCell(cell);
+            }
+
+            com.lowagie.text.Font fontDados = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA, 9);
+            dao.ProdutoDAO daoProd = new dao.ProdutoDAO();
+            List<Produto> todosProdutos = daoProd.listarTodos();
+
+            for (core.LogMovimentacao log : logs) {
+                Produto p = todosProdutos.stream().filter(prod -> prod.getCodigo() == log.getCodigoProduto()).findFirst().orElse(null);
+                String nomeProd = (p != null) ? p.getDescricao() : "Desconhecido";
+
+                table.addCell(new com.lowagie.text.Phrase(log.getDataHoraFormatada(), fontDados));
+                table.addCell(new com.lowagie.text.Phrase(log.getUsuario(), fontDados));
+                table.addCell(new com.lowagie.text.Phrase(log.getTipoMovimentacao(), fontDados));
+                table.addCell(new com.lowagie.text.Phrase(String.valueOf(log.getCodigoProduto()), fontDados));
+                table.addCell(new com.lowagie.text.Phrase(nomeProd, fontDados));
+                table.addCell(new com.lowagie.text.Phrase(String.valueOf(log.getQuantidade()), fontDados));
+                table.addCell(new com.lowagie.text.Phrase(log.getMotivo(), fontDados));
+                table.addCell(new com.lowagie.text.Phrase(log.getObservacao(), fontDados));
+            }
+
+            document.add(table);
+            document.close();
+            mostrarAlerta("Logs em PDF exportados com sucesso!");
+        } catch (Exception e) {
+            mostrarErro("Erro", "Falha ao gerar o PDF: " + e.getMessage());
+        }
+    }
+
+    // --- 4. EXPORTAÇÃO DETALHADA DO MÊS (Financeiro) ---
+    private void exportarDetalhesMesCSV(String mesAno, java.io.File file) {
+        try (java.io.PrintWriter writer = new java.io.PrintWriter(new java.io.FileWriter(file, java.nio.charset.StandardCharsets.UTF_8))) {
+            writer.write('\ufeff');
+            writer.println("Data_Hora;Produto;Qtd;Valor_Unitario;Faturamento;Lucro_Gerado");
+
+            dao.MovimentacaoDAO daoMov = new dao.MovimentacaoDAO();
+            dao.ProdutoDAO daoProd = new dao.ProdutoDAO();
+            List<core.LogMovimentacao> historico = daoMov.listarHistorico();
+            List<Produto> produtos = daoProd.listarTodos();
+            java.time.format.DateTimeFormatter fmtStr = java.time.format.DateTimeFormatter.ofPattern("MM/yyyy");
+
+            double totalFat = 0; double totalLuc = 0;
+
+            for (core.LogMovimentacao log : historico) {
+                if (log.getDataHora() == null || !"VENDA".equals(log.getTipoMovimentacao())) continue;
+                java.time.LocalDate dataLog = log.getDataHora().toLocalDateTime().toLocalDate();
+
+                if (dataLog.format(fmtStr).equals(mesAno)) {
+                    Produto p = produtos.stream().filter(prod -> prod.getCodigo() == log.getCodigoProduto()).findFirst().orElse(null);
+                    if (p != null) {
+                        double sub = p.getValorUnitVenda() * log.getQuantidade();
+                        double luc = p.getLucroUnitarioCalculado() * log.getQuantidade();
+                        totalFat += sub; totalLuc += luc;
+
+                        writer.printf("%s;%s;%d;%.2f;%.2f;%.2f%n",
+                                log.getDataHoraFormatada(), p.getDescricao(), log.getQuantidade(),
+                                p.getValorUnitVenda(), sub, luc);
+                    }
+                }
+            }
+            writer.println(";;;;;"); // Linha em branco
+            writer.printf("TOTAIS;;;;%.2f;%.2f%n", totalFat, totalLuc);
+
+            mostrarAlerta("Relatório do mês " + mesAno + " exportado com sucesso!");
+        } catch (Exception e) {
+            mostrarErro("Erro", "Falha ao salvar CSV: " + e.getMessage());
+        }
+    }
+
+    private void exportarDetalhesMesPDF(String mesAno, java.io.File file) {
+        try {
+            com.lowagie.text.Document document = new com.lowagie.text.Document(com.lowagie.text.PageSize.A4);
+            com.lowagie.text.pdf.PdfWriter.getInstance(document, new java.io.FileOutputStream(file));
+            document.open();
+
+            com.lowagie.text.Font fontTitulo = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA_BOLD, 18);
+            com.lowagie.text.Paragraph titulo = new com.lowagie.text.Paragraph("Detalhamento de Vendas - " + mesAno, fontTitulo);
+            titulo.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+            titulo.setSpacingAfter(20);
+            document.add(titulo);
+
+            com.lowagie.text.pdf.PdfPTable table = new com.lowagie.text.pdf.PdfPTable(6);
+            table.setWidthPercentage(100);
+            table.setWidths(new float[]{1.5f, 3f, 0.8f, 1.5f, 1.5f, 1.5f});
+
+            String[] headers = {"Data/Hora", "Produto", "Qtd", "Vlr. Unit", "Faturamento", "Lucro"};
+            com.lowagie.text.Font fontCabecalho = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA_BOLD, 10);
+            for (String header : headers) {
+                com.lowagie.text.pdf.PdfPCell cell = new com.lowagie.text.pdf.PdfPCell(new com.lowagie.text.Phrase(header, fontCabecalho));
+                cell.setBackgroundColor(java.awt.Color.LIGHT_GRAY);
+                cell.setHorizontalAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+                table.addCell(cell);
+            }
+
+            dao.MovimentacaoDAO daoMov = new dao.MovimentacaoDAO();
+            dao.ProdutoDAO daoProd = new dao.ProdutoDAO();
+            List<core.LogMovimentacao> historico = daoMov.listarHistorico();
+            List<Produto> produtos = daoProd.listarTodos();
+            java.time.format.DateTimeFormatter fmtStr = java.time.format.DateTimeFormatter.ofPattern("MM/yyyy");
+
+            double totalFat = 0; double totalLuc = 0;
+            com.lowagie.text.Font fontDados = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA, 9);
+
+            for (core.LogMovimentacao log : historico) {
+                if (log.getDataHora() == null || !"VENDA".equals(log.getTipoMovimentacao())) continue;
+                java.time.LocalDate dataLog = log.getDataHora().toLocalDateTime().toLocalDate();
+
+                if (dataLog.format(fmtStr).equals(mesAno)) {
+                    Produto p = produtos.stream().filter(prod -> prod.getCodigo() == log.getCodigoProduto()).findFirst().orElse(null);
+                    if (p != null) {
+                        double sub = p.getValorUnitVenda() * log.getQuantidade();
+                        double luc = p.getLucroUnitarioCalculado() * log.getQuantidade();
+                        totalFat += sub; totalLuc += luc;
+
+                        table.addCell(new com.lowagie.text.Phrase(log.getDataHoraFormatada(), fontDados));
+                        table.addCell(new com.lowagie.text.Phrase(p.getDescricao(), fontDados));
+
+                        com.lowagie.text.pdf.PdfPCell cellQtd = new com.lowagie.text.pdf.PdfPCell(new com.lowagie.text.Phrase(String.valueOf(log.getQuantidade()), fontDados));
+                        cellQtd.setHorizontalAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+                        table.addCell(cellQtd);
+
+                        table.addCell(new com.lowagie.text.Phrase(String.format("R$ %.2f", p.getValorUnitVenda()), fontDados));
+                        table.addCell(new com.lowagie.text.Phrase(String.format("R$ %.2f", sub), fontDados));
+                        table.addCell(new com.lowagie.text.Phrase(String.format("R$ %.2f", luc), fontDados));
+                    }
+                }
+            }
+
+            document.add(table);
+
+            // Rodapé com os Totais
+            com.lowagie.text.Paragraph totais = new com.lowagie.text.Paragraph(
+                    String.format("\nTotal Faturado: R$ %.2f   |   Lucro: R$ %.2f", totalFat, totalLuc),
+                    com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA_BOLD, 12)
+            );
+            totais.setAlignment(com.lowagie.text.Element.ALIGN_RIGHT);
+            document.add(totais);
+
+            document.close();
+            mostrarAlerta("Relatório do mês " + mesAno + " exportado com sucesso!");
+        } catch (Exception e) {
+            mostrarErro("Erro", "Falha ao gerar o PDF: " + e.getMessage());
+        }
+    }
+    // =================================================================================
+    // AJUSTES
+    // =================================================================================
+
+    // =================================================================================
+    // REGRAS DE NEGÓCIO
+    // =================================================================================
+    private boolean isEstoqueBaixo(Produto p) {
+        return p.getQntdDisp() <= 5;
+    }
+
+    // Regra para o que JÁ VENCEU (Data da validade ficou para trás)
+    private boolean isVencido(Produto p) {
+        java.util.Date hoje = new java.util.Date();
+        if (p instanceof core.ProdutoPerecivel perecivel && perecivel.getDataValidade() != null) {
+            return perecivel.getDataValidade().before(hoje);
+        } else if (p instanceof core.Cosmetico cosmetico && cosmetico.getDataValidade() != null) {
+            return cosmetico.getDataValidade().before(hoje);
+        }
+        return false;
+    }
+
+    // Regra para o que ESTÁ A VENCER (Ainda não venceu, mas tá no limite de 1 ou 3 meses)
+    private boolean isVencendo(Produto p) {
+        if (isVencido(p)) return false; // Se já venceu, não entra na conta do "a vencer"!
+
+        java.util.Date hoje = new java.util.Date();
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+
+        if (p instanceof core.ProdutoPerecivel perecivel && perecivel.getDataValidade() != null) {
+            cal.setTime(hoje);
+            cal.add(java.util.Calendar.MONTH, 1);
+            return perecivel.getDataValidade().before(cal.getTime());
+        } else if (p instanceof core.Cosmetico cosmetico && cosmetico.getDataValidade() != null) {
+            cal.setTime(hoje);
+            cal.add(java.util.Calendar.MONTH, 3);
+            return cosmetico.getDataValidade().before(cal.getTime());
+        }
+        return false;
     }
 
     public static String formatarValorAbreviado(double valor) {
