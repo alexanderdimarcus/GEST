@@ -15,7 +15,7 @@ public class UsuarioDAO {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, login);
-            stmt.setString(2, senha);
+            stmt.setString(2, core.Seguranca.hashearSenha(senha));
 
             ResultSet rs = stmt.executeQuery();
 

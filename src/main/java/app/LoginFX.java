@@ -15,6 +15,8 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.scene.input.KeyCode; // Importação necessária para manipular teclas
 
+import java.util.Objects;
+
 public class LoginFX extends Application {
 
     private TextField txtUsuario;
@@ -70,8 +72,18 @@ public class LoginFX extends Application {
         stage.setTitle("GEST - Login");
         stage.setScene(scene);
         stage.setResizable(false);
+        try {
+            stage.getIcons().add(new javafx.scene.image.Image(Objects.requireNonNull(getClass().getResourceAsStream("/images/icone.png"))));
+        } catch (Exception ignored) {}
+
+        stage.setTitle("GEST - Login");
+        stage.setScene(scene);
+        stage.setResizable(false);
         stage.show();
     }
+
+
+
 
     // =================================================================================
     // LÓGICA DE AUTENTICAÇÃO E NAVEGAÇÃO
