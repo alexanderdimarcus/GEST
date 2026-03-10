@@ -176,13 +176,6 @@ public class Main {
         }
     }
 
-    private static void gerarRelatorioEstoqueBaixo() {
-        System.out.print("Digite o limite mínimo de estoque: ");
-        int limite = scanner.nextInt();
-        scanner.nextLine();
-        meuEstoque.gerarRelatorioEstoqueBaixoEProximoVencimento(limite);
-    }
-
     private static void excluirProdutoDoEstoque() {
         System.out.println("\n--- EXCLUSÃO DE PRODUTO ---");
         int codigo = lerInteiroComTratamento("Digite o código do produto que deseja EXCLUIR: ");
@@ -243,13 +236,13 @@ public class Main {
         }
     }
 
-    private static Date lerDataFuturaComTratamento(String mensagem) {
+    private static Date lerDataFuturaComTratamento() {
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
         sdf.setLenient(false);
 
         while (true) {
             try {
-                System.out.print(mensagem);
+                System.out.print("Digite a data de validade (dd/MM/yyyy): ");
                 String dataStr = scanner.nextLine();
                 Date data = sdf.parse(dataStr);
 
@@ -318,7 +311,7 @@ public class Main {
             case 1:
                 System.out.print("Digite o fabricante: ");
                 String fabricante = scanner.nextLine();
-                Date validadeCosmetico = lerDataFuturaComTratamento("Digite a data de validade (dd/MM/yyyy): ");
+                Date validadeCosmetico = lerDataFuturaComTratamento();
                 novoProduto = new Cosmetico(codigo, descricao, categoria, qntd, valorVenda, percentualLucro, fornecedorAssociado, validadeCosmetico, fabricante);
                 break;
             case 2:
@@ -332,7 +325,7 @@ public class Main {
                 novoProduto = new Eletronico(codigo, descricao, categoria, qntd, valorVenda, percentualLucro, fornecedorAssociado, mesesGarantia);
                 break;
             case 3:
-                Date validadePerecivel = lerDataFuturaComTratamento("Digite a data de validade (dd/MM/yyyy): ");
+                Date validadePerecivel = lerDataFuturaComTratamento();
                 novoProduto = new ProdutoPerecivel(codigo, descricao, categoria, qntd, valorVenda, percentualLucro, fornecedorAssociado, validadePerecivel);
                 break;
         }

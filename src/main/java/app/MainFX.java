@@ -26,8 +26,6 @@ import javafx.scene.image.ImageView;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.beans.property.SimpleStringProperty;
-
-import java.util.Comparator;
 import java.util.Objects;
 
 public class MainFX extends Application {
@@ -548,8 +546,7 @@ public class MainFX extends Application {
             if (String.valueOf(produto.getCodigo()).contains(filter)) return true;
             if (produto.getDescricao().toLowerCase().contains(filter)) return true;
             if (produto.getCategoria().toLowerCase().contains(filter)) return true;
-            if (produto.getFabricante() != null && produto.getFabricante().toLowerCase().contains(filter)) return true;
-            return false;
+            return produto.getFabricante() != null && produto.getFabricante().toLowerCase().contains(filter);
         }));
 
         SortedList<Produto> sortedData = new SortedList<>(filteredData);
@@ -2529,7 +2526,7 @@ public class MainFX extends Application {
             if (isUpdating[0]) return;
             isUpdating[0] = true;
 
-            String apenasNumeros = newValue.replaceAll("[^\\d]", "");
+            String apenasNumeros = newValue.replaceAll("\\D", "");
 
             if (apenasNumeros.length() > 14) {
                 apenasNumeros = apenasNumeros.substring(0, 14);
@@ -2567,7 +2564,7 @@ public class MainFX extends Application {
 
             isUpdating[0] = true;
 
-            String apenasNumeros = newValue.replaceAll("[^\\d]", "");
+            String apenasNumeros = newValue.replaceAll("\\D", "");
 
             if (apenasNumeros.length() > 11) {
                 apenasNumeros = apenasNumeros.substring(0, 11);
@@ -2602,7 +2599,7 @@ public class MainFX extends Application {
             if (isUpdating[0]) return;
             isUpdating[0] = true;
 
-            String apenasNumeros = newValue.replaceAll("[^\\d]", "");
+            String apenasNumeros = newValue.replaceAll("\\D", "");
 
             if (apenasNumeros.length() > 8) {
                 apenasNumeros = apenasNumeros.substring(0, 8);
@@ -2634,7 +2631,7 @@ public class MainFX extends Application {
             if (isUpdating[0]) return;
             isUpdating[0] = true;
 
-            String apenasNumeros = newValue.replaceAll("[^\\d]", "");
+            String apenasNumeros = newValue.replaceAll("\\D", "");
 
             if (apenasNumeros.isEmpty()) {
                 javafx.application.Platform.runLater(() -> {

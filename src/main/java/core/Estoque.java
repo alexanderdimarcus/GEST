@@ -30,7 +30,6 @@ public class Estoque {
 
     public void cadastrarProduto(Produto produto) {
         if (produto == null) {
-            return;
         }else if (buscarProdutoPorCodigo(produto.getCodigo()) == null) {
             this.produtos.add(produto);
             System.out.println("core.Produto '" + produto.getDescricao() + "' cadastrado com sucesso!");
@@ -154,15 +153,13 @@ public class Estoque {
             if (p.getQntdDisp() < limiteMinimo) {
                 motivo += "core.Estoque Baixo";
             }
-            if (p instanceof ProdutoPerecivel) {
-                ProdutoPerecivel perecivel = (ProdutoPerecivel) p;
+            if (p instanceof ProdutoPerecivel perecivel) {
                 if (perecivel.getDataValidade().before(limitePereciveis) && perecivel.getDataValidade().after(hoje)) {
                     if (!motivo.isEmpty()) motivo += " e ";
                     long dias = calcularDiasRestantes(perecivel.getDataValidade());
                     motivo += "Vence em " + dias + " dias";
                 }
-            } else if (p instanceof Cosmetico) {
-                Cosmetico cosmetico = (Cosmetico) p;
+            } else if (p instanceof Cosmetico cosmetico) {
                 if (cosmetico.getDataValidade().before(limiteCosmeticos) && cosmetico.getDataValidade().after(hoje)) {
                     if (!motivo.isEmpty()) motivo += " e ";
                     long dias = calcularDiasRestantes(cosmetico.getDataValidade());
