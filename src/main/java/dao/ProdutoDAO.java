@@ -20,7 +20,6 @@ public class ProdutoDAO {
              ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
-                // 1. Recuperamos o fornecedor
                 Fornecedor f = new Fornecedor(
                         rs.getInt("fornecedor_id"),
                         rs.getString("f_nome"),
@@ -28,7 +27,6 @@ public class ProdutoDAO {
                         rs.getString("f_contato")
                 );
 
-                // 2. Recuperamos os dados comuns de Produto
                 int codigo = rs.getInt("codigo");
                 String descricao = rs.getString("descricao");
                 String categoria = rs.getString("categoria");
@@ -36,11 +34,7 @@ public class ProdutoDAO {
                 double valor = rs.getDouble("valor_venda");
                 double lucro = rs.getDouble("percentual_lucro");
                 String tipo = rs.getString("tipo_produto");
-
-                // 3. Decidimos qual filho instanciar baseado no TIPO
                 Produto p = null;
-
-                // A marca agora serve para todos!
                 String fabricante = rs.getString("fabricante");
 
                 p = switch (tipo) {
@@ -79,7 +73,6 @@ public class ProdutoDAO {
                 .orElse(null);
     }
 
-    // Metodo para SALVAR um novo produto (Insert)
     public void salvar(Produto p) throws SQLException {
         String sql = "INSERT INTO produtos (codigo, descricao, categoria, quantidade, valor_venda, percentual_lucro, fornecedor_id, tipo_produto, data_validade, fabricante, meses_garantia) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -87,7 +80,7 @@ public class ProdutoDAO {
         try (Connection conn = ConexaoBD.conectar();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            // 1. Dados Comuns
+            // Dados Comuns
             stmt.setInt(1, p.getCodigo());
             stmt.setString(2, p.getDescricao());
             stmt.setString(3, p.getCategoria());
@@ -97,7 +90,7 @@ public class ProdutoDAO {
             stmt.setInt(7, p.getFornecedor().getId());
             stmt.setString(10, p.getFabricante());
 
-            // 2. Dados Específicos
+            // Dados Específicos
             switch (p) {
                 case Cosmetico c -> {
                     stmt.setString(8, "COSMETICO");
@@ -122,7 +115,6 @@ public class ProdutoDAO {
         }
     }
 
-    // Metodo para ATUALIZAR um produto existente (Update)
     public void atualizar(Produto p) throws SQLException {
         String sql = "UPDATE produtos SET descricao = ?, categoria = ?, quantidade = ?, valor_venda = ?, percentual_lucro = ?, fornecedor_id = ?, data_validade = ?, fabricante = ?, meses_garantia = ? WHERE codigo = ?";
 
@@ -157,7 +149,6 @@ public class ProdutoDAO {
                 }
             }
 
-            // O Código é a nossa chave de busca!
             stmt.setInt(10, p.getCodigo());
 
             stmt.executeUpdate();
@@ -165,7 +156,6 @@ public class ProdutoDAO {
         }
     }
 
-    // Metodo para EXCLUIR um produto do banco
     public void excluir(int codigo) throws SQLException {
         String sql = "DELETE FROM produtos WHERE codigo = ?";
 

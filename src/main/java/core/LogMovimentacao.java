@@ -24,7 +24,6 @@ public class LogMovimentacao {
         this.dataHora = dataHora;
     }
 
-    // Getters formatados para a Tabela do JavaFX
     public int getId() { return id; }
     public int getCodigoProduto() { return codigoProduto; }
     public String getTipoMovimentacao() { return tipoMovimentacao; }
@@ -34,7 +33,7 @@ public class LogMovimentacao {
     public String getUsuario() { return usuario; }
     public Timestamp getDataHora() { return dataHora; }
 
-    // Converte o Timestamp do banco (ex: 25/02/2026 14:30:00)
+    // Converte o Timestamp do banco
     public String getDataHoraFormatada() {
         if (dataHora == null) return "-";
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");

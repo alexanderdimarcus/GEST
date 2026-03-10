@@ -23,7 +23,6 @@ public class ResumoMes {
         this.prejuizoBaixas += prejuizo;
     }
 
-    // Getters formatados para a Tabela do JavaFX
     public String getMesAno() { return mesAno; }
     public int getQtdVendas() { return qtdVendas; }
     public String getTotalVendidoFormatado() { return MainFX.formatarValorAbreviado(totalVendido); }

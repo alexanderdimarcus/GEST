@@ -10,7 +10,6 @@ public abstract class Produto implements IRelatorio {
     protected Fornecedor fornecedor;
     protected String fabricante;
 
-    // Novo construtor completo
     public Produto(int codigo, String descricao, String categoria, int qntdDisp, double valorUnitVenda, double percentualLucro, Fornecedor fornecedor, String fabricante) {
         this.codigo = codigo;
         this.descricao = descricao;
@@ -22,7 +21,6 @@ public abstract class Produto implements IRelatorio {
         this.fabricante = fabricante;
     }
 
-    // Construtor antigo (mantido para não quebrar a sua classe de teste cli.Main)
     public Produto(int codigo, String descricao, String categoria, int qntdDisp, double valorUnitVenda, double percentualLucro, Fornecedor fornecedor) {
         this(codigo, descricao, categoria, qntdDisp, valorUnitVenda, percentualLucro, fornecedor, "Não informada");
     }
@@ -41,7 +39,6 @@ public abstract class Produto implements IRelatorio {
 
     public double getLucroUnitarioCalculado() { return this.valorUnitVenda * (this.percentualLucro / 100.0); }
 
-    // Getters e Setters
     public int getCodigo() { return codigo; }
     public String getDescricao() { return descricao; }
     public void setDescricao(String descricao) { this.descricao = descricao; }

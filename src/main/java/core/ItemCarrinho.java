@@ -11,15 +11,12 @@ public class ItemCarrinho {
         this.subtotal = produto.getValorUnitVenda() * quantidade;
     }
 
-    // Getters formatados especificamente para a Tabela do JavaFX conseguir ler
     public int getCodigo() { return produto.getCodigo(); }
     public String getDescricao() { return produto.getDescricao(); }
     public int getQuantidade() { return quantidade; }
-
     public String getValorUnitarioFormatado() {
         return String.format("R$ %.2f", produto.getValorUnitVenda());
     }
-
     public String getSubtotalFormatado() {
         return String.format("R$ %.2f", subtotal);
     }
@@ -28,12 +25,12 @@ public class ItemCarrinho {
     public Produto getProduto() { return produto; }
     public double getSubtotal() { return subtotal; }
 
-    // Metodo para somar itens iguais repetidamente
     public void adicionarQuantidade(int qtd) {
         this.quantidade += qtd;
         this.subtotal = this.produto.getValorUnitVenda() * this.quantidade;
     }
-    // Novo metodo para permitir a edição direta na tabela
+
+    // Metodo para permitir a edição direta na tabela
     public void setQuantidade(int qtd) {
         this.quantidade = qtd;
         this.subtotal = this.produto.getValorUnitVenda() * this.quantidade;

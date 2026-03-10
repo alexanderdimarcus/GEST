@@ -17,7 +17,6 @@ public class DetalheVenda {
         this.lucro = lucro;
     }
 
-    // Getters para a Tabela do JavaFX
     public String getDataHora() { return dataHora; }
     public String getProduto() { return produto; }
     public int getQtd() { return qtd; }

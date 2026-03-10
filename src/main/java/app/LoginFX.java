@@ -25,7 +25,7 @@ public class LoginFX extends Application {
 
     @Override
     public void start(Stage stage) {
-        // Aplica o tema moderno do AtlantaFX
+
         Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
 
         // --- Componentes do Card de Login ---
@@ -69,9 +69,7 @@ public class LoginFX extends Application {
         });
 
         Scene scene = new Scene(root, 400, 480);
-        stage.setTitle("GEST - Login");
-        stage.setScene(scene);
-        stage.setResizable(false);
+
         try {
             stage.getIcons().add(new javafx.scene.image.Image(Objects.requireNonNull(getClass().getResourceAsStream("/images/icone.png"))));
         } catch (Exception ignored) {}

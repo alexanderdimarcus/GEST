@@ -5,7 +5,6 @@ import java.security.MessageDigest;
 
 public class Seguranca {
 
-    // Transforma uma senha de texto limpo em um Hash SHA-256
     public static String hashearSenha(String senhaOriginal) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");

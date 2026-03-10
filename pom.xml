@@ -10,16 +10,15 @@
     <version>1.0-SNAPSHOT</version>
 
     <properties>
-        <!-- Java -->
+
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-
-        <!-- JavaFX -->
         <javafx.version>21.0.2</javafx.version>
+
     </properties>
 
     <dependencies>
-        <!-- JavaFX -->
+
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
@@ -55,7 +54,6 @@
     <build>
         <plugins>
 
-            <!-- Compiler -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -65,7 +63,6 @@
                 </configuration>
             </plugin>
 
-            <!-- JavaFX Runner -->
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>

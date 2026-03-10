@@ -81,6 +81,7 @@ public class Estoque {
             System.out.println("Erro: core.Produto com código " + codigo + " não encontrado para exclusão.");
         }
     }
+
     public double calcularValorTotalEstoque() {
         double valorTotal = 0.0;
         for (Produto p : this.produtos) {

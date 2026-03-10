@@ -4,13 +4,11 @@ import java.util.Date;
 public class ProdutoPerecivel extends Produto {
     private Date dataValidade;
 
-    // Construtor NOVO (com fabricante)
     public ProdutoPerecivel(int codigo, String descricao, String categoria, int qntdDisp, double valorUnitVenda, double percentualLucro, Fornecedor fornecedor, String fabricante, Date dataValidade) {
         super(codigo, descricao, categoria, qntdDisp, valorUnitVenda, percentualLucro, fornecedor, fabricante);
         this.dataValidade = dataValidade;
     }
 
-    // Construtor ANTIGO (para o CLI não quebrar)
     public ProdutoPerecivel(int codigo, String descricao, String categoria, int qntdDisp, double valorUnitVenda, double percentualLucro, Fornecedor fornecedor, Date dataValidade) {
         this(codigo, descricao, categoria, qntdDisp, valorUnitVenda, percentualLucro, fornecedor, "Não informada", dataValidade);
     }

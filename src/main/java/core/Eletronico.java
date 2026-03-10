@@ -5,7 +5,6 @@ import java.util.Calendar;
 public class Eletronico extends Produto {
     private Date dataGarantia;
 
-    // Construtor NOVO (com fabricante)
     public Eletronico(int codigo, String descricao, String categoria, int qntdDisp, double valorUnitVenda, double percentualLucro, Fornecedor fornecedor, String fabricante, int mesesGarantia) {
         super(codigo, descricao, categoria, qntdDisp, valorUnitVenda, percentualLucro, fornecedor, fabricante);
         if (mesesGarantia > 0) {
@@ -14,7 +13,6 @@ public class Eletronico extends Produto {
         } else throw new IllegalArgumentException("Prazo inválido.");
     }
 
-    // Construtor ANTIGO (para o CLI não quebrar)
     public Eletronico(int codigo, String descricao, String categoria, int qntdDisp, double valorUnitVenda, double percentualLucro, Fornecedor fornecedor, int mesesGarantia) {
         this(codigo, descricao, categoria, qntdDisp, valorUnitVenda, percentualLucro, fornecedor, "Não informada", mesesGarantia);
     }
