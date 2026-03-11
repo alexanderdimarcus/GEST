@@ -187,7 +187,7 @@ Acompanhamos também o ritmo de entrega da equipe através do gráfico **Burndow
   <em>Figura 5 – Gráfico Burndown</em>
 </p>
 
-### Transbordo de Tarefas e Evolução do Backlog
+### Transbordo de Tarefas
 
 Ocorreram pequenos transbordos de funcionalidades visuais da Sprint 2 para a Sprint 3, mas que foram rapidamente absorvidos. Novas histórias (como Gestão de Equipe e Relatórios Financeiros) foram descobertas e adicionadas ao escopo na reta final para agregar mais valor ao produto.
 
