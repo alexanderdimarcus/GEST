@@ -30,7 +30,7 @@ Inicialmente, o GEST foi concebido como um projeto acadêmico na disciplina de P
 Na disciplina de Processo de Desenvolvimento de Software (PDS), o sistema passa por um processo de expansão e aprimoramento, deixando de ser apenas uma aplicação conceitual para se tornar um sistema mais completo e próximo de um cenário real. O objetivo nesta nova etapa é desenvolver uma interface gráfica intuitiva para usuários finais, integrar o sistema a um banco de dados, além de aplicar práticas de engenharia de software, como metodologias ágeis, planejamento incremental e boas práticas de projeto.
 
 <p align="center">
-  <img src="https://i.imgur.com/dAKdR0y.png"/>
+  <img src="https://imgur.com/a/dhlmgoz"/>
   <br>
   <em>Figura 2 – Versão PDS (BETA)</em> 
 </p>
@@ -97,7 +97,19 @@ Esta seção apresenta os requisitos funcionais e não-funcionais do sistema.
 
 **História 14 — Exportação de dados para arquivo**  
 *Como gerente, quero exportar a lista de produtos para um arquivo externo (ex: .csv), para realizar conferências físicas ou envio de relatórios.*  
-**Status:** 🕒
+**Status:** ✅
+
+**História 15 — Controle de acesso por perfil** 
+*Como administrador, quero restringir o acesso a funcionalidades sensíveis do sistema com base no cargo do usuário (Administrador vs. Funcionário), para garantir a segurança da informação e evitar alterações indevidas.* 
+**Status:** ✅ 
+
+**História 16 — Gestão de equipe e usuários** 
+*Como administrador, quero uma tela de gestão para cadastrar, editar, excluir acessos e resetar senhas de funcionários, para manter o controle centralizado de quem acessa o sistema.* 
+**Status:** ✅ 
+
+**História 17 — Relatório de desempenho financeiro mensal** 
+*Como dono do negócio, quero visualizar um relatório mensal contendo o faturamento bruto e lucro estimado, para acompanhar a saúde financeira e a rentabilidade da empresa.* 
+**Status:** ✅
 
 ### Requisitos Não-Funcionais
 
