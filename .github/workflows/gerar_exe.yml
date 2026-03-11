@@ -1,0 +1,36 @@
+name: Gerar Instaladores GEST (Windows e Linux)
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: 1. Baixar o codigo do repositorio
+        uses: actions/checkout@v4
+
+      - name: 2. Instalar o Java 21 na maquina virtual
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: 3. Fabricar os arquivos (O .jar para Linux e o .exe para Windows)
+        run: mvn clean package -DskipTests
+
+      - name: 4. Disponibilizar o arquivo .exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: GEST-Windows-Executavel
+          path: target/GEST.exe
+
+      - name: 5. Disponibilizar o arquivo .jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: GEST-Linux-Mac-Executavel
+          path: target/GEST-1.0-SNAPSHOT.jar
