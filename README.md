@@ -97,18 +97,24 @@ Esta seção apresenta os requisitos funcionais e não-funcionais do sistema.
 
 **História 14 — Exportação de dados para arquivo**  
 *Como gerente, quero exportar a lista de produtos para um arquivo externo (ex: .csv), para realizar conferências físicas ou envio de relatórios.*  
-**Status:** ✅
+**Status:** ✅  
 
-**História 15 — Controle de acesso por perfil** 
-*Como administrador, quero restringir o acesso a funcionalidades sensíveis do sistema com base no cargo do usuário (Administrador vs. Funcionário), para garantir a segurança da informação e evitar alterações indevidas.* 
+<br>
+
+**Histórias implementadas ao decorrer do andamento do projeto, para agregar mais valor:**
+
+<br>
+
+**História 15 — Controle de acesso por perfil**  
+*Como administrador, quero restringir o acesso a funcionalidades sensíveis do sistema com base no cargo do usuário (Administrador vs. Funcionário), para garantir a segurança da informação e evitar alterações indevidas.*  
 **Status:** ✅ 
 
-**História 16 — Gestão de equipe e usuários** 
-*Como administrador, quero uma tela de gestão para cadastrar, editar, excluir acessos e resetar senhas de funcionários, para manter o controle centralizado de quem acessa o sistema.* 
+**História 16 — Gestão de equipe e usuários**  
+*Como administrador, quero uma tela de gestão para cadastrar, editar, excluir acessos e resetar senhas de funcionários, para manter o controle centralizado de quem acessa o sistema.*  
 **Status:** ✅ 
 
-**História 17 — Relatório de desempenho financeiro mensal** 
-*Como dono do negócio, quero visualizar um relatório mensal contendo o faturamento bruto e lucro estimado, para acompanhar a saúde financeira e a rentabilidade da empresa.* 
+**História 17 — Relatório de desempenho financeiro mensal**  
+*Como dono do negócio, quero visualizar um relatório mensal contendo o faturamento bruto e lucro estimado, para acompanhar a saúde financeira e a rentabilidade da empresa.*  
 **Status:** ✅
 
 ### Requisitos Não-Funcionais
@@ -149,7 +155,7 @@ A ferramenta Jira foi utilizada para organizar o backlog, as sprints e as tarefa
 ### Papéis da Equipe
 
 - **Product Owner (PO):** Alexander  
-- **Desenvolvedor:** Felipe e Alexander
+- **Desenvolvedor:** Alexander e Felipe
 
 ### Números do Projeto
 - **Data de kick-off:** 19/12/2025  
@@ -159,21 +165,20 @@ A ferramenta Jira foi utilizada para organizar o backlog, as sprints e as tarefa
     - **Período da Sprint 2:** 07/02/2026 a 20/02/2026   
     - **Período da Sprint 3:** 21/02/2026 a 09/03/2026  
 
-### Transbordo de Tarefas
+### Transbordo de Tarefas e Cerimônias
 
-Não houve transbordo de tarefas entre sprints, pois o projeto encontra-se em fase inicial e ainda não entrou na etapa de desenvolvimento das funcionalidades.
+O projeto seguiu o cronograma de cerimônias do Scrum (Planning e Review). Ocorreram pequenos transbordos de funcionalidades visuais da Sprint 2 para a Sprint 3, mas que foram rapidamente absorvidos. Novas histórias (como Gestão de Equipe e Relatórios Financeiros) foram descobertas e adicionadas ao escopo na reta final para agregar mais valor ao produto.
 
 ### Backlog Inicial e Backlog Atual
 
 O backlog inicial foi composto pelas principais histórias do sistema, relacionadas a:
-
 - Configuração do banco de dados;
 - Telas de cadastro e listagem;
 - Movimentação de estoque;
 - Dashboard e relatórios.
 
-O backlog atual houve alterações, necessidades surgiram e viraram histórias.  
-O sistema atualmente está com o dashboard e a tela de consulta de produtos funcioando.
+No backlog atual, houve alterações: necessidades surgiram durante o desenvolvimento e viraram novas histórias (como o controle de permissões de usuários e a separação de faturamento financeiro).
+O sistema atualmente está 100% finalizado e funcional, com todas as histórias entregues, incluindo o dashboard completo, tela de vendas, tela de cadastro de fornecedores e produtos, alteração no estoque, painel de relatórios exportáveis e controle de níveis de acesso.
 
 ---
 
@@ -212,16 +217,92 @@ O sistema será organizado em pacotes (módulos) conforme sua responsabilidade, 
 
 ### Propriedades e Princípios de Projeto
 
-O projeto do sistema segue os seguintes princípios e boas práticas:
+O projeto do GEST foi fundamentado em sólidos princípios de Orientação a Objetos, garantindo manutenibilidade, escalabilidade e baixo acoplamento entre os componentes. Abaixo estão os principais conceitos aplicados, com exemplos retirados da base real de código:
 
-- **Separação de responsabilidades:** cada classe possui uma função específica dentro do sistema.
-- **Baixo acoplamento:** as camadas do sistema se comunicam através de interfaces bem definidas.
-- **Alta coesão:** classes relacionadas possuem responsabilidades similares.
-- **Padrão MVC (Model-View-Controller):** separação entre dados, interface e controle.
-- **Padrão DAO (Data Access Object):** isolamento da lógica de acesso ao banco de dados.
+**1. Abstração e Herança**
+
+Para evitar duplicação de código e modelar o domínio corretamente, a classe `Produto` foi definida como abstrata. Ela encapsula os atributos e métodos universais, permitindo que subclasses específicas herdem e estendam esse comportamento de acordo com suas regras de negócio.
+
+*Trecho do sistema (core/Produto.java e core/ProdutoPerecivel.java):*
+
+```java
+public abstract class Produto implements IRelatorio {
+    protected String descricao;
+    protected String categoria;
+    protected int codigo;
+    // ... construtores e atributos encapsulados
+
+    public abstract void exibirDetalhes(); // Obriga as filhas a implementarem
+}
+```
+```java
+public class ProdutoPerecivel extends Produto {
+    private Date dataValidade;
+
+    public ProdutoPerecivel(int codigo, String descricao, String categoria, int qntdDisp, double valorUnitVenda, double percentualLucro, Fornecedor fornecedor, String fabricante, Date dataValidade) {
+        super(codigo, descricao, categoria, qntdDisp, valorUnitVenda, percentualLucro, fornecedor, fabricante);
+        this.dataValidade = dataValidade;
+    }
+}
+```
+
+ 
+**2.Separação de Responsabilidades (Padrão DAO e MVC)**
+
+A regra de negócio e o acesso a dados estão estritamente isolados da interface gráfica. A classe MainFX (View) não realiza nenhuma instrução SQL; ela interage com a camada DAO, que cuida exclusivamente da persistência usando JDBC.
+
+**_Trecho do sistema (dao/ProdutoDAO.java):_**
+```java
+public class ProdutoDAO {
+    // A classe encapsula a conexão JDBC e as queries SQL, isolando a complexidade
+    public void salvar(Produto p) throws SQLException {
+        String sql = "INSERT INTO produtos (codigo, descricao, categoria, quantidade, valor_venda, percentual_lucro, fornecedor_id, tipo_produto, data_validade, fabricante, meses_garantia) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        // ... preparação do PreparedStatement e execução
+    }
+}
+```
+
+**3.Polimorfismo e Uso de Interfaces**
+
+O sistema utiliza polimorfismo tanto na implementação de contratos quanto na instanciação de objetos. A interface IRelatorio define o comportamento de formatação, enquanto a camada DAO utiliza os recursos modernos do Java (Switch Expressions e Pattern Matching) para instanciar e manipular as subclasses dinamicamente.
+
+_**Trecho do sistema (core/Produto.java e dao/ProdutoDAO.java):**_
+
+```java
+// Implementação do contrato da interface na classe abstrata
+    @Override
+    public void imprimirRelatorio() { gerarCabecalho(); gerarCorpo(); exibirDetalhes(); }
+
+    // Retorno polimórfico no DAO instanciando a classe filha correta
+    p = switch (tipo) {
+        case "COSMETICO" -> {
+            Date validadeCos = rs.getDate("data_validade");
+            yield new Cosmetico(codigo, descricao, categoria, qtd, valor, lucro, f, validadeCos, fabricante);
+        }
+        case "ELETRONICO" -> {
+            int garantia = rs.getInt("meses_garantia");
+            yield new Eletronico(codigo, descricao, categoria, qtd, valor, lucro, f, fabricante, garantia);
+        }
+        case "PERECIVEL" -> {
+            Date validadePer = rs.getDate("data_validade");
+            yield new ProdutoPerecivel(codigo, descricao, categoria, qtd, valor, lucro, f, fabricante, validadePer);
+        }
+        default -> p;
+    };
+```
+
+
+ ## DevOps e Automação (CI/CD)
+ 
+ Como diferencial do projeto, implementamos práticas de DevOps e Integração/Entrega Contínuas (CI/CD) utilizando o **GitHub Actions**.
+ 
+ Toda vez que um novo código é aprovado e enviado para a branch `main`, um *Workflow* automatizado (`gerar_exe.yml`) inicializa uma máquina virtual, compila o projeto e gera os executáveis nativos (o `.jar` universal e o `.exe` via Launch4j). Estes artefatos são anexados automaticamente à aba "Releases" do GitHub.
 
 ---
 
 ## Conclusão
 
-O projeto encontra-se em desenvolvimento (Sprint 2).
+O projeto do GEST atingiu com êxito a sua Versão Estável 1.0.0, cumprindo todos os requisitos propostos. Durante o ciclo da disciplina de Processo de Desenvolvimento de Software (PDS), o sistema passou por uma transformação arquitetural profunda: evoluiu de um simples projeto acadêmico estruturado em terminal para uma aplicação desktop completa, enriquecida por uma interface gráfica intuitiva (JavaFX), banco de dados em nuvem, controle de permissões por nível de acesso e geração de relatórios gerenciais exportáveis. 
+
+As lições aprendidas ao longo do desenvolvimento foram imensuráveis, especialmente no que tange à aplicação prática de metodologias ágeis. A utilização da metodologia ágil Scrum foi fundamental para o sucesso das entregas, garantindo que o desenvolvimento fosse iterativo, focado no valor agregado ao cliente final e com margem de segurança para absorver o descobrimento de novas histórias nas etapas finais. Além disso, a aplicação rigorosa de padrões de projeto, como a separação em camadas (MVC e DAO), provou-se vital. Sem um código fracamente acoplado, a implementação de regras visuais complexas na reta final do projeto teria sido insustentável. A introdução de práticas de DevOps, através da esteira de CI/CD via GitHub Actions, também agregou uma visão de mercado corporativo ao projeto, demonstrando o poder de automatizar testes, empacotamentos e *releases*.
