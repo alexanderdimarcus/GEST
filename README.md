@@ -157,7 +157,7 @@ A ferramenta Jira foi utilizada para organizar o backlog, as sprints e as tarefa
 - **Product Owner (PO):** Alexander  
 - **Desenvolvedor:** Alexander e Felipe
 
-### Números do Projeto
+### Números do Projeto e Cerimônias
 - **Data de kick-off:** 19/12/2025  
 - **Total de sprints planejadas:** 3
 - **Sprint Atual:** Projeto finalizado.  
@@ -165,9 +165,31 @@ A ferramenta Jira foi utilizada para organizar o backlog, as sprints e as tarefa
     - **Período da Sprint 2:** 07/02/2026 a 20/02/2026   
     - **Período da Sprint 3:** 21/02/2026 a 09/03/2026  
 
-### Transbordo de Tarefas e Cerimônias
+O projeto seguiu o cronograma de cerimônias do Scrum, com a realização de reuniões de Planning e Review. Abaixo, apresentamos a visão geral do nosso **Scrum Board** e do **Backlog** no Jira, evidenciando a organização das tarefas:
 
-O projeto seguiu o cronograma de cerimônias do Scrum (Planning e Review). Ocorreram pequenos transbordos de funcionalidades visuais da Sprint 2 para a Sprint 3, mas que foram rapidamente absorvidos. Novas histórias (como Gestão de Equipe e Relatórios Financeiros) foram descobertas e adicionadas ao escopo na reta final para agregar mais valor ao produto.
+<p align="center">
+  <img src="https://i.imgur.com/0hbvZmx.png" alt="Scrum Board no Jira"/>
+  <br>
+  <em>Figura 3 – Scrum Board do Projeto</em>
+</p>
+
+<p align="center">
+  <img src="https://i.imgur.com/dEDuUzW.png" alt="Backlog no Jira"/>
+  <br>
+  <em>Figura 4 – Backlog no Jira</em>
+</p>
+
+Acompanhamos também o ritmo de entrega da equipe através do gráfico **Burndown**, que nos auxiliou a visualizar a queima de tarefas ao longo das sprints:
+
+<p align="center">
+  <img src="https://i.imgur.com/ZcluKyl.png" alt="Gráfico de Burndown"/>
+  <br>
+  <em>Figura 5 – Gráfico Burndown</em>
+</p>
+
+### Transbordo de Tarefas e Evolução do Backlog
+
+Ocorreram pequenos transbordos de funcionalidades visuais da Sprint 2 para a Sprint 3, mas que foram rapidamente absorvidos. Novas histórias (como Gestão de Equipe e Relatórios Financeiros) foram descobertas e adicionadas ao escopo na reta final para agregar mais valor ao produto.
 
 ### Backlog Inicial e Backlog Atual
 
@@ -206,14 +228,22 @@ Fluxo simplificado da arquitetura:
 
 ### Projeto de Componentes
 
-O sistema será organizado em pacotes (módulos) conforme sua responsabilidade, seguindo uma estrutura semelhante a:
+O sistema foi organizado em pacotes (módulos) conforme sua responsabilidade, visando manter o baixo acoplamento e a alta coesão:
 
 - **view:** telas JavaFX do sistema.
 - **controller:** classes responsáveis por tratar eventos da interface.
-- **model:** classes que representam as entidades do sistema (core.Produto, core.Fornecedor, Usuário, etc).
-- **service:** regras de negócio.
-- **dao:** classes responsáveis pelo acesso ao banco de dados.
-- **util/config:** classes auxiliares, como conexão com o banco.
+- **model / core:** classes que representam as entidades do domínio do sistema (Produto, Fornecedor, Usuario, etc).
+- **service:** regras de negócio e validações.
+- **dao:** classes responsáveis pelo acesso direto ao banco de dados e persistência.
+- **util/config:** classes auxiliares, como conexão com o banco e utilitários de segurança.
+
+Abaixo, apresentamos o diagrama UML de pacotes/componentes que ilustra a dependência e a comunicação entre esses módulos na arquitetura do GEST:
+
+<p align="center">
+  <img src="URL_OU_CAMINHO_DO_SEU_DIAGRAMA_UML" alt="Diagrama UML de Componentes/Pacotes"/>
+  <br>
+  <em>Figura 6 – Diagrama UML de Componentes do Sistema</em>
+</p>
 
 ### Propriedades e Princípios de Projeto
 
@@ -293,16 +323,25 @@ _**Trecho do sistema (core/Produto.java e dao/ProdutoDAO.java):**_
 ```
 
 
- ## DevOps e Automação (CI/CD)
+## DevOps e Automação (CI/CD)
  
- Como diferencial do projeto, implementamos práticas de DevOps e Integração/Entrega Contínuas (CI/CD) utilizando o **GitHub Actions**.
- 
- Toda vez que um novo código é aprovado e enviado para a branch `main`, um *Workflow* automatizado (`gerar_exe.yml`) inicializa uma máquina virtual, compila o projeto e gera os executáveis nativos (o `.jar` universal e o `.exe` via Launch4j). Estes artefatos são anexados automaticamente à aba "Releases" do GitHub.
+
+Como diferencial do projeto, implementamos práticas de DevOps e Integração/Entrega Contínuas (CI/CD) utilizando o **GitHub Actions**.
+
+Toda vez que um novo código é aprovado e enviado para a branch `main`, um *Workflow* automatizado (`gerar_exe.yml`) inicializa uma máquina virtual, compila o projeto e gera os executáveis nativos (o `.jar` universal e o `.exe` via Launch4j). Estes artefatos são anexados automaticamente à aba "Releases" do GitHub.
+
+<p align="center">
+  <img src="https://i.imgur.com/adsJ33e.png" alt="Pipeline de CI/CD no GitHub Actions"/>
+  <br>
+  <em>Figura V – Execução do fluxo automatizado de CI/CD</em>
+</p>
 
 ---
 
 ## Conclusão
 
-O projeto do GEST atingiu com êxito a sua Versão Estável 1.0.0, cumprindo todos os requisitos propostos. Durante o ciclo da disciplina de Processo de Desenvolvimento de Software (PDS), o sistema passou por uma transformação arquitetural profunda: evoluiu de um simples projeto acadêmico estruturado em terminal para uma aplicação desktop completa, enriquecida por uma interface gráfica intuitiva (JavaFX), banco de dados em nuvem, controle de permissões por nível de acesso e geração de relatórios gerenciais exportáveis. 
+O projeto do GEST atingiu com sucesso a sua Versão Estável 1.0.0, cumprindo todos os requisitos propostos. Durante o ciclo da disciplina de Processo de Desenvolvimento de Software (PDS), o sistema passou por uma transformação arquitetural profunda: evoluiu de um simples projeto acadêmico estruturado em terminal para uma aplicação desktop completa, enriquecida por uma interface gráfica intuitiva (JavaFX), banco de dados em nuvem, controle de permissões por nível de acesso e geração de relatórios gerenciais exportáveis. 
 
-As lições aprendidas ao longo do desenvolvimento foram imensuráveis, especialmente no que tange à aplicação prática de metodologias ágeis. A utilização da metodologia ágil Scrum foi fundamental para o sucesso das entregas, garantindo que o desenvolvimento fosse iterativo, focado no valor agregado ao cliente final e com margem de segurança para absorver o descobrimento de novas histórias nas etapas finais. Além disso, a aplicação rigorosa de padrões de projeto, como a separação em camadas (MVC e DAO), provou-se vital. Sem um código fracamente acoplado, a implementação de regras visuais complexas na reta final do projeto teria sido insustentável. A introdução de práticas de DevOps, através da esteira de CI/CD via GitHub Actions, também agregou uma visão de mercado corporativo ao projeto, demonstrando o poder de automatizar testes, empacotamentos e *releases*.
+As lições aprendidas ao longo do desenvolvimento foram imensuráveis, especialmente no que tange à aplicação prática de metodologias ágeis. A utilização da metodologia ágil Scrum foi fundamental para o sucesso das entregas, garantindo que o desenvolvimento fosse iterativo, focado no valor agregado ao cliente final e com margem de segurança para absorver o descobrimento de novas histórias nas etapas finais. Além disso, a aplicação rigorosa de padrões de projeto, como a separação em camadas (MVC e DAO), provou-se vital. Sem um código fracamente acoplado, a implementação de regras visuais complexas na reta final do projeto teria sido insustentável.
+
+Apesar do sucesso na entrega final, o projeto apresentou desafios significativos ao longo das sprints. A principal dificuldade encontrada pela equipe foi a transição da interface via terminal (da versão anterior em POO) para a interface gráfica com JavaFX, o que exigiu uma curva de aprendizado acelerada sobre o ciclo de vida da UI, carregamento de arquivos FXML e a manipulação de eventos. Além disso, a configuração da conexão persistente com o banco de dados PostgreSQL e o correto alinhamento da esteira de automação no GitHub Actions demandaram diversas horas de pesquisa e testes até alcançarem a estabilidade necessária. Esses obstáculos, no entanto, foram fundamentais para o amadurecimento técnico do grupo e para a consolidação dos conhecimentos práticos de Engenharia de Software.
