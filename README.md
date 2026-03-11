@@ -16,7 +16,7 @@
 
 ## Introdução
 
-O GEST (Gestão de core.Estoque) é um sistema desenvolvido com o objetivo de auxiliar no controle e gerenciamento de produtos em estoque de uma pequena empresa. O sistema permite o cadastro, consulta, atualização e remoção de produtos, bem como o registro de entradas e saídas, fornecendo relatórios que auxiliam na tomada de decisões relacionadas ao estoque, como produtos em falta, valor total armazenado e lucro estimado.
+O GEST (Gestão de ESToque) é um sistema desenvolvido com o objetivo de auxiliar no controle e gerenciamento de produtos em estoque de uma pequena empresa. O sistema permite o cadastro, consulta, atualização e remoção de produtos, bem como o registro de entradas e saídas, fornecendo relatórios que auxiliam na tomada de decisões relacionadas ao estoque, como produtos em falta, valor total armazenado e lucro estimado.
 
 Inicialmente, o GEST foi concebido como um projeto acadêmico na disciplina de Programação Orientada a Objetos (POO), onde seu foco principal foi a modelagem do domínio do problema e a aplicação dos conceitos fundamentais de orientação a objetos, como encapsulamento, herança, polimorfismo e abstração.
 
@@ -208,41 +208,31 @@ O sistema atualmente está 100% finalizado e funcional, com todas as histórias 
 
 ### Projeto Arquitetural
 
-A arquitetura do sistema GEST segue o modelo de **arquitetura em camadas**, com separação entre interface gráfica, lógica de negócio e acesso a dados.
+A arquitetura do sistema GEST segue o modelo lógico de **arquitetura em camadas**, garantindo a separação entre a interface com o usuário, a regra de negócio e a persistência de dados.
 
-A estrutura geral do sistema é composta pelas seguintes camadas:
-
-- **Camada de Apresentação (View):** responsável pela interface gráfica desenvolvida em JavaFX.
-- **Camada de Controle (Controller):** responsável por receber as ações do usuário e coordenar as operações do sistema.
-- **Camada de Serviço (Service):** responsável pelas regras de negócio.
-- **Camada de Acesso a Dados (DAO):** responsável pela comunicação com o banco de dados PostgreSQL via JDBC.
-- **Camada de Persistência:** banco de dados PostgreSQL.
-
-Fluxo simplificado da arquitetura:
+A estrutura foi desenhada sob a ótica do padrão MVC combinado com o padrão DAO, estabelecendo o seguinte fluxo:
+1. **Camada de Apresentação:** Recebe a interação do usuário.
+2. **Camada de Serviço/Domínio:** Valida as regras de negócio.
+3. **Camada de Acesso a Dados:** Executa as instruções no banco.
 
 <p align="center">
   <img src="https://i.imgur.com/4lMjtEw.png"/>
   <br>
-  <em>Figura 3 – Fluxo simplificado da arquitetura</em>
+  <em>Figura 6 – Fluxo simplificado da arquitetura (Apresentação, Lógica e Dados)</em>
 </p>
 
 ### Projeto de Componentes
 
-O sistema foi organizado em pacotes (módulos) conforme sua responsabilidade, visando manter o baixo acoplamento e a alta coesão:
+Fisicamente, a arquitetura lógica descrita acima foi modularizada através de um **Diagrama de Pacotes**. O sistema está organizado em namespaces isolados para facilitar a manutenibilidade e a importação de dependências:
 
-- **view:** telas JavaFX do sistema.
-- **controller:** classes responsáveis por tratar eventos da interface.
-- **model / core:** classes que representam as entidades do domínio do sistema (Produto, Fornecedor, Usuario, etc).
-- **service:** regras de negócio e validações.
-- **dao:** classes responsáveis pelo acesso direto ao banco de dados e persistência.
-- **util/config:** classes auxiliares, como conexão com o banco e utilitários de segurança.
-
-Abaixo, apresentamos o diagrama UML de pacotes/componentes que ilustra a dependência e a comunicação entre esses módulos na arquitetura do GEST:
+- `app`: Contém os arquivos de inicialização (Launcher) e os controladores das telas JavaFX (MainFX, LoginFX).
+- `core`: Atua como o "coração" do sistema, contendo todas as entidades (Produto, Fornecedor, Usuario), classes abstratas, interfaces e classes utilitárias de segurança (Seguranca, Sessao).
+- `dao`: Componentes focados exclusivamente na persistência de dados (ConexaoBD, ProdutoDAO, etc), traduzindo as chamadas do sistema para comandos SQL.
 
 <p align="center">
-  <img src="URL_OU_CAMINHO_DO_SEU_DIAGRAMA_UML" alt="Diagrama UML de Componentes/Pacotes"/>
+  <img src="https://i.imgur.com/1DoJnki.png"/>
   <br>
-  <em>Figura 6 – Diagrama UML de Componentes do Sistema</em>
+  <em>Figura 7 – Diagrama UML de Pacotes</em>
 </p>
 
 ### Propriedades e Princípios de Projeto
@@ -333,7 +323,7 @@ Toda vez que um novo código é aprovado e enviado para a branch `main`, um *Wor
 <p align="center">
   <img src="https://i.imgur.com/adsJ33e.png" alt="Pipeline de CI/CD no GitHub Actions"/>
   <br>
-  <em>Figura V – Execução do fluxo automatizado de CI/CD</em>
+  <em>Figura 8 – Execução do fluxo automatizado de CI/CD</em>
 </p>
 
 ---
