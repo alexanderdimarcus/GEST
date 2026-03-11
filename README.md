@@ -30,9 +30,9 @@ Inicialmente, o GEST foi concebido como um projeto acadêmico na disciplina de P
 Na disciplina de Processo de Desenvolvimento de Software (PDS), o sistema passa por um processo de expansão e aprimoramento, deixando de ser apenas uma aplicação conceitual para se tornar um sistema mais completo e próximo de um cenário real. O objetivo nesta nova etapa é desenvolver uma interface gráfica intuitiva para usuários finais, integrar o sistema a um banco de dados, além de aplicar práticas de engenharia de software, como metodologias ágeis, planejamento incremental e boas práticas de projeto.
 
 <p align="center">
-  <img src="https://imgur.com/a/dhlmgoz"/>
+  <img src="https://i.imgur.com/PhtykJU.png"/>
   <br>
-  <em>Figura 2 – Versão PDS (BETA)</em> 
+  <em>Figura 2 – Versão PDS (v1.0.0)</em> 
 </p>
 
 ---
@@ -149,15 +149,15 @@ A ferramenta Jira foi utilizada para organizar o backlog, as sprints e as tarefa
 ### Papéis da Equipe
 
 - **Product Owner (PO):** Alexander  
-- **Desenvolvedor:** Felipe  
+- **Desenvolvedor:** Felipe e Alexander
 
 ### Números do Projeto
-
 - **Data de kick-off:** 19/12/2025  
-- **Total de sprints planejadas:** 4
-- **Sprint Atual:** 2 (Configuração do Banco de dados e UI)  
+- **Total de sprints planejadas:** 3
+- **Sprint Atual:** Projeto finalizado.  
     - **Período da Sprint 1:** 19/12/2025 a 06/02/2026
     - **Período da Sprint 2:** 07/02/2026 a 20/02/2026   
+    - **Período da Sprint 3:** 21/02/2026 a 09/03/2026  
 
 ### Transbordo de Tarefas
 
